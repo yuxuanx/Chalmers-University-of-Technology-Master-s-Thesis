@@ -1,26 +1,44 @@
 % CREATED BY DAVID FRISK, 2016
 \chapter{Introduction}
-This chapter presents the section levels that can be used in the template. 
+The development of autonomous driving has attracted an enormous amount of interest in research during last decades. In order for a self-driving vehicle to be deployed in real-world environments, it must be capable of reliably and efficiently modelling static as well as dynamical obstacles, e.g., landmarks, pedestrians and other nearby moving vehicles. The process of estimating the number of targets and their individual states based on a sequence of noise-corrupted measurements including missed detections and false alarms is denoted as multiple target tracking (MTT). Traditionally, MTT algorithms have been tailored with the ``point target'' assumption that each target is modelled as a point without spatial extent, and that each target gives rise to at most one measurement per time scan. Popular solutions to MTT are the joint probabilistic data association (JPDA) filter \cite{jpda}, multiple hypothesis tracker (MHT) \cite{mht} and approaches based on random finite sets (RFS) \cite{rfs}.
 
-\section{Section levels}
-The following table presents an overview of the section levels that are used in this document. The number of levels that are numbered and included in the table of contents is set in the settings file \texttt{Settings.tex}. The levels are shown in Section \ref{Section_ref}.
+~\\
+However, the high-resolution feature of modern radar and lidar sensors equipped on self-driving vehicles makes the ``point target'' assumption unrealistic, since it is common that targets may occupy several sensor resolution cells. The tracking of such a target leads to the so-called extended target tracking problem, and the objective is to recursively determine the time-varying shape and kinematic parameters of the target. In extended target tracking, a non-standard measurement model is needed to model the number and the spatial distribution of generated measurements for each target. A common choice for modelling the number of measurements is the inhomogeneous Poisson Point Process (PPP), proposed in \cite{ppp}. As for the modelling of the spatial distribution, two popular models are the Random Hypersurface Models \cite{hypersurface} and the Gaussian inverse Wishart (GIW) approach \cite{randomMatrix,randomMatrix2}. The former is designed for general star-convex shape; the latter relies on the elliptic shape that it models the spatial distribution of target-generated measurements as Gaussian with unknown mean and covariance. The Gamma GIW (GGIW) model \cite{phdextended,cphdextended} is an extension of the GIW model by incorporating the estimation of target measurement rates. 
 
-\begin{table}[H]
-\centering
-\begin{tabular}{ll} \hline\hline
-Name & Command\\ \hline
-Chapter & \textbackslash\texttt{chapter\{\emph{Chapter name}\}}\\
-Section & \textbackslash\texttt{section\{\emph{Section name}\}}\\
-Subsection & \textbackslash\texttt{subsection\{\emph{Subsection name}\}}\\
-Subsubsection & \textbackslash\texttt{subsubsection\{\emph{Subsubsection name}\}}\\
-Paragraph & \textbackslash\texttt{paragraph\{\emph{Paragraph name}\}}\\
-Subparagraph & \textbackslash\texttt{paragraph\{\emph{Subparagraph name}\}}\\ \hline\hline
-\end{tabular}
-\end{table}
+~\\
+Solving the MTT problem is mainly complicated by the unknown correspondence between targets and measurements, known as data association. Unfortunately, the problem of data association can be even more challenging in multiple extended target tracking, since each target can generate multiple measurements per time scan. In previous work \cite{phdextended,pmbmextended,pmbmextended2}, the data association can be split into two parts: first, clustering methods are used to find multiple partitions of the set of measurements; second, assignment methods are used to assign each measurement cell to a target or a clutter source. In the recently presented work \cite{soextended}, a stochastic optimization (SO) method is proposed that directly maximises the multi-target likelihood function and solves the data association problem in a single step. It has been demonstrated in \cite{soextended} that the SO approach has improved performance in comparison to methods which involve clustering and assignment. 
 
-\section{Section} \label{Section_ref}
-\subsection{Subsection}
-\subsubsection{Subsubsection}
-\paragraph{Paragraph}
-\subparagraph{Subparagraph}
+~\\
+Many of the existing multiple extended target tracking algorithms are based on RFS with the distribution of target-generated measurements modelled as GIW or GGIW. Developments using RFS have yielded a variety of tracking methods, such as Probability Hypothesis Density (PHD) filter \cite{phdextended2,phdextended3}, Cardinalised PHD (CPHD) filter \cite{cphdextended}, Generalised Labeled Multi-Bernoulli (GLMB) filter \cite{lmbextended} and its approximation Labeled Multi-Bernoulli (LMB) filter \cite{lmbextended} as well as the Poisson Multi-Bernoulli Mixture (PMBM) filter \cite{pmbmextended,pmbmextended2}. The computational efficient PHD and CPHD filters are based on moment approximations of posterior distributions, while the GLMB and PMBM filters are based on conjugate priors that can provide accurate approximations to the exact posterior distributions. In the context of MTT, conjugacy means that if we begin with a multi-target density of a conjugate prior form, then all subsequent predicted and updated multi-target densities will also be of the conjugate prior form. Comparison results in \cite{pmbmextended,lmbextended} have shown that for extended target tracking filters based on conjugate priors outperform the PHD and CPHD filters. Additionally, it should be noted that only the GLMB and LMB filters produce estimates of targets trajectories. In this thesis, the focus is on the estimates of target states.
+
+~\\
+A variational Bayesian approach to approximating the PMBM density with a single Poisson multi-Bernoulli (PMB) density was presented in \cite{variational} for point targets tracking. PMB filter is a computationally efficient approximation of PMBM filter, but it is not yet clear how the variational method of \cite{variational} can be used on extended targets tracking. In this thesis, a PMB filter for multiple extended target tracking is presented, which recursively finds the best-fitting PMB of the PMBM posterior by minimising the Kullback-Leibler divergence (KLD). The performance and computational time of the PMB filter are compared to the PHD filter and the PMBM filter in simulated scenarios. Additionally, two other sampling approaches to extended target tracking, namely Gibbs sampling \cite{gibbs} and merge/split Metropolis Hastings (MH) sampling \cite{mergesplit}, are evaluated by comparing the estimation performance and computational time to the approach based on SO. The multi-target filtering performance is assessed using the generalised optimal sub-pattern assignment (GOSPA) metric \cite{gospa}, in which the estimated location and shape error of extended targets are measured using Gaussian Wasserstein Distance \cite{gwmetric}. Compared with the unnormalised OSPA metric \cite{ospa}, the GOSPA metric allows for further breaking down the cardinality mismatch into errors due to missed and false targets. 
+
+~\\
+In this work, three different scenarios have been simulated. The first scenario under consideration is tracking of 27 well-spaced targets. In the second scenario, two targets are spatially well separated at the beginning, then move in parallel in close proximity, before separating again towards the end. In the last scenario, three targets are born spatially close to each other and then separate gradually. Various aspects of different filters with different sampling methods to handle the data association problem are analysed in these three scenarios. Though all filters and sampling methods have pros and cons, the PMB filter with stochastic optimization arguably provides the best overall performance regarding GOSPA and computational time. 
+
+~\\
+This thesis is organized as follows. The background is presented in Chapter 2. Chapter 3 discusses approaches to solving the data association problem based on Gibbs sampling and MH sampling. The PMB filter for extended target tracking is derived in Chapter 4. Simulation results are presented in Chapter 5 and conclusions are drawn in Chapter 6. 
+
+% \section{Section levels}
+% The following table presents an overview of the section levels that are used in this document. The number of levels that are numbered and included in the table of contents is set in the settings file \texttt{Settings.tex}. The levels are shown in Section \ref{Section_ref}.
+
+% \begin{table}[H]
+% \centering
+% \begin{tabular}{ll} \hline\hline
+% Name & Command\\ \hline
+% Chapter & \textbackslash\texttt{chapter\{\emph{Chapter name}\}}\\
+% Section & \textbackslash\texttt{section\{\emph{Section name}\}}\\
+% Subsection & \textbackslash\texttt{subsection\{\emph{Subsection name}\}}\\
+% Subsubsection & \textbackslash\texttt{subsubsection\{\emph{Subsubsection name}\}}\\
+% Paragraph & \textbackslash\texttt{paragraph\{\emph{Paragraph name}\}}\\
+% Subparagraph & \textbackslash\texttt{paragraph\{\emph{Subparagraph name}\}}\\ \hline\hline
+% \end{tabular}
+% \end{table}
+
+% \section{Section} \label{Section_ref}
+% \subsection{Subsection}
+% \subsubsection{Subsubsection}
+% \paragraph{Paragraph}
+% \subparagraph{Subparagraph}
 

@@ -4,6 +4,9 @@
 \documentclass[12pt,a4paper,twoside,openright]{report}
 \input{include/settings/Settings}
 
+\usepackage[sorting=none]{biblatex}
+\addbibresource{mybibli.bib}
+
 \begin{document} 
 
 % COVER PAGE, TITLE PAGE AND IMPRINT PAGE
@@ -60,6 +63,7 @@
 \addcontentsline{toc}{chapter}{Bibliography}
 \input{include/backmatter/References}
 
+
 % APPENDICES
 \cleardoublepage
 \appendix
@@ -67,6 +71,7 @@
 \pagenumbering{Roman}			% Capitalized roman numbering starting from I (one)
 
 \input{include/backmatter/Appendix_1}
+
 
 
 \end{document}

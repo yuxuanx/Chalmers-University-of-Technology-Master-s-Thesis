@@ -1,18 +1,27 @@
 % CREATED BY DAVID FRISK, 2016
-An Informative Headline describing the Content of the Report\\
-A Subtitle that can be Very Much Longer if Necessary\\
-NAME FAMILYNAME\\
-Department of Some Subject or Technology\\
-Chalmers University of Technology \setlength{\parskip}{0.5cm}
+Poisson Multi-Bernoulli Filter for Multiple Extended Target Tracking\\
+% A Subtitle that can be Very Much Longer if Necessary\\
+YUXUAN XIA\\
+Department of Signals and Systems\\
+Chalmers University of Technology
+\setlength{\parskip}{0.5cm}
 
 \thispagestyle{plain}			% Supress header 
 \setlength{\parskip}{0pt plus 1.0pt}
 \section*{Abstract}
-Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+Multiple target tracking is a core task in the field of autonomous driving. Due to the rapid development of high-resolution sensors, e.g., near-field radar and lidar, a target may occupy multiple sensor cells on any given scan. Solving the multiple extended target tracking problem is mainly complicated by the unknown correspondence between targets and measurements that a huge number of data association events need to be considered.
+
+~\\
+In this thesis work, a Poisson multi-Bernoulli (PMB) filter for multiple extended target tracking is proposed, within which the extended targets are modelled using gamma Gaussian inverse Wishart  distributions. The PMB filter is based on the Poisson multi-Bernoulli mixture (PMBM) conjugate prior and approximates the posterior PMBM as a single PMB via variational approximation. The data association problem is handled by iteratively sampling from the posterior distribution that directly maximizes the desired likelihood function. 
+
+~\\
+The PMB filter is compared to the PMBM filter and Probability Hypothesis Density filter in simulated scenarios with performance assessed using the generalized optimal sub-pattern assignment (GOSPA) metric. Simulation results show that the PMB filter arguably provides the best overall performance regarding GOSPA error and computational time. 
+
+
 
 % KEYWORDS (MAXIMUM 10 WORDS)
 \vfill
-Keywords: lorem, ipsum, dolor, sit, amet, consectetur, adipisicing, elit, sed, do.
+Keywords: multiple target tracking, extended targets, random finite sets, inverse Wishart, Bayesian inference, Monte Carlo methods, sampling methods, variational approximation.
 
 \newpage				% Create empty back of side
 \thispagestyle{empty}

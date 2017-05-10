@@ -1,65 +1,236 @@
 % CREATED BY DAVID FRISK, 2016
-\chapter{Theory}
+\chapter{Background}
 
-In the following sections, examples of a figure, an equation, a table, a chemical structure, a list, a listing and a to-do note are shown.
+\section{Problem Formulation}
+An RFS is an unordered finite set of random variables whose cardinality is also a random variable \cite{rfs}. In RFS-based MTT methods, target states and observations are both represented in the form of finite sets. Let the target set at time step $k$ denoted as $X_k = \{x^1_k,...,x^{|X_k|}_k\}$, where random variable $x^i_k$ denotes the state of $i$th target at time step $k$ and the target set cardinality $|X_k|$ is a time-varying discrete random variable. The set of measurements obtained at time $k$ is denoted as $Z_k = \{z^1_k,...,z^{|Z_k|}_k\}$, where the measurement set cardinality $|Z_k|$ is a discrete random variable. Further, the sequence of all the measurement sets received so far up to time $k$ is denoted as $Z^k$. 
 
-\section{Figure}
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.45\linewidth, trim=3cm 11cm 3cm 11cm]{figure/X.pdf}
-\includegraphics[width=0.45\linewidth, trim=3cm 11cm 3cm 11cm]{figure/Y.pdf}
-\caption{Surface and contour plots showing the two dimensional function $z(x,y)=\sin(x+y)\cos(2x)$.}
-\end{figure}
-
-\section{Equation}
+~\\
+MTT involves using the measurement sets $Z^k$ to estimate the target set $X_k$, which captures the information about the number of targets and individual target states. Let $f_{k|k^{\prime}} (X_k|Z^{k^{\prime}})$ denote the multi-target distribution at time $k$ given all measurement sets up to and including time $k^{\prime}$, and let $f_k(Z_k|X_k)$ denote the multi-target measurement likelihood. Given these definitions, the multi-target Bayes filter propagates the multi-target distribution in time using the Bayes update \cite[p .484]{rfs}
 \begin{equation}
-f(t)=\left\{ \begin{array}{ll}
-1,~~~~ & t< 1 \\
-t^2 & t\geq 1
-\end{array}\right.
+    f_{k|k}(X_k|Z^k) = \frac{f_{k}(Z_k|X_k)f_{k|k-1}(X_k|Z^{k-1})} {\int f_{k}(Z_k|X_k)f_{k|k-1}(X_k|Z^{k-1}) \delta X_k},
+    \label{eq:update}
+\end{equation}
+and the Chapman-Kolmogorov prediction \cite[p .484]{rfs}
+\begin{equation}
+    f_{k+1|k}(X_{k+1}|Z^k) = \int f_{k+1|k}(X_{k+1}|X_k)f_{k|k}(X_k|Z^k)\delta X_k,
+    \label{eq:predict}
+\end{equation}
+where the set integral is defined as \cite[p .361]{rfs}:
+\begin{equation}
+    \int f(X)\delta X \triangleq f(\emptyset) + \sum_{n=1}^{\infty}\frac{1}{n!}\int f(\{x_1,...,x_n\})d(x_1,\dotsb,x_n).
+    \label{eq:setintegral}
 \end{equation}
 
-\section{Table}
-\begin{table}[H]
-\centering
-\caption{Values of $f(t)$ for $t=0,1,\dots 5$.}
-\begin{tabular}{l|llllll} \hline\hline
-$t$ & 0 & 1 & 2 & 3 & 4 & 5 \\ \hline
-$f(t)$ & 1 & 1 & 4 & 9 & 16 & 25 \\ \hline\hline
-\end{tabular}
-\end{table}
 
-\section{Chemical structure}
-\begin{center}
-\chemfig{X*5(-E-T-A-L-)}
-\end{center}
 
-\section{List}
-\begin{enumerate}
-  \item The first item
-  \begin{enumerate}
-    \item Nested item 1
-    \item Nested item 2
-  \end{enumerate}
-  \item The second item
-  \item The third item 
-  \item \dots
-\end{enumerate}
+\section{Modeling}
+In this section, some forms of RFS distributions are introduced first. The standard target transition model and the extended target model are then presented. 
 
-\section{Source code listing}
+\subsection{Random finite set modeling}
+\subsubsection{Poisson point process}
+A non-homogeneous PPP
+with intensity function $D(x)=\mu f(x)$ has RFS density function \cite{pmbmextended2}
+\begin{equation}
+    f(X) = e^{-\int D(x)dx}\prod_{x\in X}D(x)=e^{-u}\prod_{x\in X}\mu f(x),
+    \label{eq:poisson}
+\end{equation}
+where $\mu$ is the Poisson rate and $f(x)$ is the spatial distribution. The set cardinality $|X|$ is Poisson distributed, and all the variables $x\in X$ are independent and identical distributed (IID). PPPs are often used to model clutter measurements and extended target measurements.
+
+\subsubsection{Bernoulli process}
+A Bernoulli process with existence probability $r$ and probability density function (pdf) $f(x)$ has RFS density
+\begin{equation}
+f(X) = 
+\begin{cases}
+    1-r,& X=\emptyset\\
+    r\cdot f(x),& X=\{x\}\\
+    0,& |X| > 1
+\end{cases}
+\label{eq:bernoulli}\\
+\end{equation}
+The cardinality $|X|$ is Bernoulli distributed with parameter $r$. This can be interpreted to mean that set $X$ has a probability $1-r$ of being empty, and a probability $r$ of containing a single variable with pdf $f(x)$. In MTT, a Bernoulli process can be used to capture the uncertainty of a single target regarding both its existence $r$ and its state $x$. 
+
+\subsubsection{Multi-Bernoulli process}
+An MB process $X$ is a discrete union of independent Bernoulli processes $X^i$, i.e., $X = \uplus_{i\in\mathbb{I}}X^i$, where $\mathbb{I}$ is the index set of Bernoulli components. The RFS density of an MB process can be represented as \cite{pmbmextended2}
+\begin{equation}
+f(X) = 
+\begin{cases}
+\sum_{\uplus_{i\in\mathbb{I}}X^i=X}\prod_{i\in\mathbb{I}}f^i(X^i), & |X| \leq |\mathbb{I}| \\
+0, & |X| > |\mathbb{I}|
+\end{cases}
+\label{eq:mb}
+\end{equation}
+In MTT, targets are typically assumed to be independent. Thus, multiple targets can be naturally represented through an MB process. 
+
+
+\subsection{Dynamics model}
+In this thesis, it is assumed that targets arrive according to a PPP, independently of existing targets. At each time step, targets remain with a probability of survival $p^S_k(x)$. Targets depart according to IID Markov processes with probability $1-p^S_k(x)$. Targets evolve independently from time step $k$ to time step $k+1$ according to IID Markov processes with transition density $f_{k+1|k}(x_{k+1}|x_{k})$. 
+
+\subsection{Extended target measurement model}
+The set of measurements $Z_k$ is the union of a set of clutter measurements and sets of target-generated measurements. The clutter is modelled as a PPP with Poisson rate $\lambda$ and spatial distribution $c(z)$, independent of targets and any target-generated measurements. Each extended target may give rise to multiple measurements with the state dependent probability of detection $p^D(x_k)$. If the extended target is detected, the target-generated measurements are modelled as a PPP with Poisson rate $\gamma(x_k)$ and the spatial distribution $\phi(z|x_k)$, independent of all other targets and their corresponding generated measurements. 
+
+~\\
+The extended target set measurement likelihood for a non-empty set of measurements is the product of target detection probability and the PPP density of target-generated measurements \cite{pmbmextended2}
+\begin{equation}
+    f(Z_k|x_k) = p^D(x_k)e^{-\gamma(x_k)}\prod_{z_k\in Z_k}\gamma(x_k)\phi(z_k|x_k).
+\end{equation}
+For an extended target state $x_k$, the effective detection probability is the product of the target detection probability and the probability that the target generates at least one measurement, which is $1-e^{-\gamma(x_k)}$. Then the effective probability of missed detection can be calculated accordingly as
+\begin{equation}
+    q^D(x_k) = 1 - p^D(x_k) + p^D(x_k)e^{-\gamma(x_k)},
+\end{equation}
+which is also the measurement likelihood for an empty measurement set.
+
+\subsection{GGIW model}
+In the GGIW model, the extended target state $x_k$ is modelled as 
+\begin{equation}
+    x_k=(\gamma_k,\xi_k,\chi_k),
+\end{equation}
+where positive random variable $\gamma_k$ is the Poisson rate that models the average number of measurements generated by the target, the random vector $\xi_k$ describes the kinematic state of the target centroid (e.g., position, velocity, acceleration and turn-rate), and the random covariance matrix $\chi_k$ describes the size and shape of the target. It is assumed that the measurements are Gaussian distributed around the centroid of the target. Since that the gamma distribution is the conjugate prior for the unknown Poisson rate, and that the Gaussian-inverse Wishart distributions are the conjugate priors for Gaussian distributed detections with unknown mean and covariance, the density of the extended target state can be expressed as
+\begin{align}
+f_{k|k}(x_k) &= \mathcal{GAM}(\gamma_k;\alpha_{k|k},\beta_{k|k})\mathcal{N}(\xi_k;\mathbf{m}_{k|k},P_{k|k})\mathcal{IW}_d(\chi_k;v_{k|k},V_{k|k}) \\
+&\triangleq \mathcal{GGIW}(\xi_k;\zeta_{k|k}),
+\end{align}
+where $\zeta_{k|k} = \{\alpha_{k|k},\beta_{k|k},\mathbf{m}_{k|k},P_{k|k},v_{k|k},V_{k|k}\}$ is the set of GGIW density parameters; $\mathcal{GAM}(\gamma;\alpha,\beta)$ is the gamma pdf with shape $\alpha>0$ and inverse scale $\beta>0$; $\mathcal{N}(\xi;\mathbf{m},P)$ is the Gaussian pdf with mean $m$ and covariance $P$; $\mathcal{IW}_d(\chi;v,V)$ is the inverse Wishart pdf with degrees of freedom $v>2d$ and scale matrix $V$ of dimension $d$.
+
+
+
+
+% \section{Extended target state space model}
+% Many approaches are available for modelling the spatial distribution of a single extended target, see \cite{extendedoverview} for a comprehensive discussion. In this thesis, random matrix model \cite{randomMatrix,randomMatrix2} is used, which implies the target shape is an ellipse. The random matrix approach models the extended target state as the combination of a Poisson rate scalar $\gamma_k$, a kinematic state vector $\bold{\xi}_k$ and an extent matrix $S_k$.
+
 %\lstset{language=Matlab}
-\begin{lstlisting}[frame=single]
-% Generate x- and y-nodes
-x=linspace(0,1); y=linspace(0,1);
+% \begin{lstlisting}[frame=single]
+% % Generate x- and y-nodes
+% x=linspace(0,1); y=linspace(0,1);
 
-% Calculate z=f(x,y)
-for i=1:length(x)
- for j=1:length(y)
-  z(i,j)=x(i)+2*y(j);
- end
-end
-\end{lstlisting}
+% % Calculate z=f(x,y)
+% for i=1:length(x)
+%  for j=1:length(y)
+%   z(i,j)=x(i)+2*y(j);
+%  end
+% end
+% \end{lstlisting}
+\section{PMB for Point Target Tracking}
+The PMBM MTT conjugate prior was developed for point target in \cite{pmbmpoint,pmbmpoint2}. A variational Bayesian approach to approximating the MB mixture (MBM) density with a single MB density was presented in \cite{variational}, leading to the so-called PMB filter. In this section, a background on the PMB filter for multiple point target tracking is presented. The reader is referred to \cite{variational,pmbmpoint} for detailed analytic derivations and mathematical expressions.
 
-\section{To-do note}
-The \texttt{todo} package enables to-do notes to be added in the page margin. This can be a very convenient way of making notes in the document during the process of writing. All notes can be hidden by using the option \emph{disable} when loading the package in the settings. \todo{Example of a to-do note.}
+\subsection{The PMBM conjugate prior}
+The PMBM is a linear combination of independent PPP and MBM components with the following form
+\begin{equation}
+    f(X_k) = \sum_{X_k^u\uplus X_k^d=X_k}f^{u}(X_k^u)f^{d}(X_k^d),
+\label{eq:pmbm}
+\end{equation}
+where $X^u$ and $X^d$ correspond to undetected targets and detected targets respectively. Let $\mathbb{J}$ be the index set of MB components in the MBM, and $\mathbb{I}^j$ be the index set of Bernoulli components in the $j$th MB. For targets $X^d$ that have already been detected, their distributions can be described as an MBM of the form \cite{pmbmextended2}:
+\begin{subequations}
+\begin{align}
+    f^{d}(X^d_k) &= \sum_{j\in\mathbb{J}}\mathcal{W}^jf^j(X^d),\\
+    f^j(X^d) &= \begin{cases}
+\sum_{\uplus_{i\in\mathbb{I}^j}X^i=X^d}\prod_{i\in\mathbb{I}^j}f^{j,i}(X^i), & |X^d| \leq |\mathbb{I}| \\
+0, & |X^d| > |\mathbb{I}|
+\end{cases}
+\end{align}
+\label{eq:mbm}
+\end{subequations}
+where $f^{j,i}(\cdot)$ is a Bernoulli process, defined in (\ref{eq:bernoulli}), and weight $\mathcal{W}^j$ is the probability of $j$th MB component, satisfying $\sum_{j\in\mathbb{J}}\mathcal{W}^j = 1$.
 
+
+~\\
+Each of the MB components in MBM typically corresponds to a particular global association hypothesis for the detected targets \cite{pmbmpoint}, with its probability indicated by the corresponding weight. Each global association hypothesis is made up of single target hypotheses on each target \cite{pmbmpoint}. One single target hypothesis can incorporate events, including that the target never existed, that the target existed before and that the target continues to exist, represented via Bernoulli process. Missed detection may occur on some proportions of targets that are hypothesised to be born. A target that is hypothesised to exist but has never been detected is treated as an unknown target \cite{pmbmpoint}. The distribution of unknown targets $f^u(X^u)$ is modelled as the PPP component, defined in (\ref{eq:poisson}).
+
+\subsection{Variational MB}
+A PMB is a union of a PPP describing unknown targets and an MB process describing already detected targets. In PMB recursion, the PMB density is preserved in prediction step, whereas the MB component becomes an MBM due to data association. A variational approximation method was presented in \cite{variational} to obtain the best-fitting MB $g(X)$ that minimises the Kullback-Leibler (KL) divergence from the MBM distribution $f(X)$:
+\begin{equation}
+\underset{g}{\arg\min}\int f(X)\log\frac{f(X)}{g(X)} = \underset{g}{\arg\max}\int f(X)\log g(X)dX.
+\label{eq:kl}
+\end{equation}
+
+
+~\\
+An approximate solution is based on minimizing the upper bound of (\ref{eq:kl}), using the variational Bayesian expectation-maximization (EM) approach. The correspondence between the Bernoulli distribution in the MBM and the Bernoulli distribution in the best-fitting MB distribution is treated as missing data. The upper bound to the objective of (\ref{eq:kl}) is given by \cite{variational}
+\begin{equation}
+D_{UB}(f(X)||g(X))= -\sum_{j\in\mathbb{J},\pi\in\Pi_N}\mathcal{W}^jq_j(\pi)\sum_{i=1}^N\int f^{j,i}(X^i)\log g^{\pi(i)}(X^i)\delta X^i,
+\end{equation}
+with the assumption that each MB has the same number of Bernoulli components  $N$, i.e., $|\mathbb{I}^j|=N$ for $j\in\{1,...,|\mathbb{J}|\}$, and that the missing data $q_j(\pi)$ is constrained to vary only with the $j$th MB component. The missing data satisfies $q_j(\pi) \geq 0$ and $\sum_{\pi\in\Pi}q_j(\pi)=1$, where $\Pi$ is the set of all ways to assign the Bernoulli components in $f^j(X)$ to the Bernoulli components in $g(X)$. The EM process proceeds by alternating between estimating $q_j(\pi)$ and optimizing $g(X)$. 
+
+
+~\\
+Further, it is shown in \cite{variational} that this optimization problem can be solved approximately as:
+\begin{equation}
+    \min\limits_{q(h,j)\in\mathcal{M}}-\sum^N_{j=1}\int \Bigg(\sum_{h\in\mathcal{H}}q(h,j)f_{h}(X)\Bigg)\cdot\log g^j(X)\delta X,
+    \label{eq:qhj}
+\end{equation}
+where $\mathcal{H}$ is the index set of all the unique Bernoulli components in $f(X)$, and $q(h,j)$ is the probability that a Bernoulli component $f_h(X)$ in $f(X)$ is assigned to the $j$th Bernoulli component of $g(X)$. $\mathcal{M}$ is an approximated polytope needed for tractability
+\begin{equation}
+    \mathcal{M} = \Bigg\{q(h,j)\geq0\Bigg|\sum_{h\in\mathcal{H}}q(h,j)=1 ~\forall~ j\in\{1,...,N\},\sum^N_{j=1}q(h,j)=p_h ~\forall~ h\in\mathcal{H}\Bigg\},
+\end{equation}
+where $p_h$ can be interpreted as the probability of Bernoulli component $f_h(X)$ in $f(X)$ is assigned to the approximated MB $g(X)$. In this case, the E-step reverts to a Linear programming (LP) \cite{variational}. The variational MB algorithm is initialized with
+\begin{equation}
+p_j(h) = \sum\limits_{f^j(X)|f^{j,i}(X)=f_h(X)}w_j,
+\end{equation}
+which can be approximately calculated using loopy belief propagation (LBP) \cite{lbp}.
+
+\section{PMBM for Extended Target Tracking}
+The PMBM model was developed for multiple extended target tracking in \cite{pmbmextended,pmbmextended2,soextended}. The data association problem is very challenging in extended target tracking. It is unknown that which measurements are from targets and which are clutter, and that which target generated which measurement. In previous work \cite{pmbmextended,pmbmextended2}, the data association is split into two parts, called partitioning and assignment. The recent work \cite{soextended} has dealt with the data association using a SO approach that it works directly on maximizing the likelihood. In this section, a summary of the results in these papers is presented. The reader is referred to \cite{pmbmextended,pmbmextended2,soextended} for more implementation details.  
+
+% \subsection{Data association event in the PMBM filter}
+% The data association events in the PMBM filter for multiple extended target tracking typically include the following three parts \cite{pmbmextended2}:
+% \begin{itemize}
+%     \item The set of measurements $Z$ are divided into two parts: $Y$ and $Z\backslash Y$. $Y$ corresponds to measurements that are either clutter or generated by possible unknown targets, while $Z\backslash Y$ corresponds to measurements that are generated by previous detected targets.
+%     \item The set of measurements $Y$ is further partitioned into subsets called cells. Each measurement cell corresponds to either clutter or an unknown target.
+%     \item The set of measurements $Z\backslash Y$ is also partitioned into cells. Each measurement cell contains measurements generated by a previous detected target, but the exact correspondence is unknown. 
+% \end{itemize}
+
+\subsection{The GGIW-PMBM filter implementation}
+The conjugacy of GGIW-PMBM filter for extended target tracking has been proved in \cite{pmbmextended2}. The filter propagates the GGIW-PMBM density parameters in time recursively via a prediction step and an update step. In the prediction step, the MB describing previously existed tracks and the PPP describing unknown targets are predicted individually. By having a Poisson birth model, the PPP for new born targets can be easily incorporated into the predicted PPP. 
+
+~\\
+In the update step, the PPP and the MBM are updated independently. Two single target hypotheses are created for each measurement cell, and then the PPP intensity is updated by the missed detection probability. The first single target hypothesis covers the case that the measurement cell is associated with a previous target so that this hypothesis has zero existence probability and the corresponding pdf of the Bernoulli distribution has no effect. The second single target hypothesis covers the case that the measurement cell corresponds to a new target, or in the case of the measurement cell containing only one measurement, either a new target or clutter.  
+
+~\\
+The density for a target detected for the first time is multi-modal, with one mode for each GGIW component in the predicted PPP density. Mixture reduction can be used to reduce this to a uni-modal GGIW density \cite{phdextended,gammareduction}. For targets surviving from previous time steps, new single target hypotheses are included from missed detection, or updates of previous hypotheses using one of the measurement cells. 
+In both PPP and MBM updating, Two new GGIW components are updated for a GGIW component that is not detected. The first is resulted from a missed detection with probability $1-p^D(x)$. The second is because the target generates zero detections. Since only the gamma parameters are different in these two GGIW components, gamma mixture reduction \cite{gammareduction} can be used to reduce this to a single mode GGIW density. 
+
+\subsection{Data association in the PMBM filter}
+The data association events in the PMBM filter include partitioning the measurements into measurement cells and associating each measurement cell to a previous detected target or an unknown target. Let $\mathbb{M}_k$ denote the index set of measurements at time step $k$, and $\mathcal{A}^j$ denote the space of all the data associations for the $j$th predicted global association hypothesis. Then $\mathbb{M}_k\cup\mathbb{I}^j_{k|k-1}$ is the union of measurement index set and target index set for the $j$th predicted hypothesis. A data association $A\in\mathcal{A}^j$ is a partition of $\mathbb{M}_k\cup\mathbb{I}^j_{k|k-1}$ into non-empty disjoint subsets $C\in A$, called index cells \cite{pmbmextended2}. An index cell $C$ can consist of a target index $i_C$ and measurement indices of a measurement cell $\mathbf{C}_C$. An index cell can also be formed only be measurement indices of a measurement cell, which corresponds to a possible newly detected target. In addition, an index cell can be formed only by a target index, which means that the corresponding target is miss-detected. 
+
+~\\
+In the PMBM update step, each possible data association will result in a MB component in the updated MBM. The likelihood of data association $A\in\mathcal{A}^j$ can be expressed as \cite{pmbmextended2}:
+\begin{equation}
+\mathcal{L}^{j,A}_{k|k-1}=\prod_{\underset{\underset{C\cap \mathbb{M}_k\neq \emptyset}{C\cap \mathbb{I}^j_{k|k-1}=\emptyset}}{C\in A:}}\mathcal{L}^b_{\mathbf{C}_C}\prod_{\underset{\underset{C\cap \mathbb{M}_k\neq \emptyset}{C\cap \mathbb{I}^j_{k|k-1}\neq\emptyset}}{C\in A:}}\frac{\mathcal{L}^{j,i_C}_{\mathbf{C}_C}}{\mathcal{L}^{j,i_C}_{\emptyset}}\prod_{i\in\mathbb{I}^j_{k|k-1}}\mathcal{L}^{j,i}_{\emptyset},
+\end{equation}
+where $\mathcal{L}^b_{\mathbf{C}_C}$ is the likelihood that measurement cell $\mathbf{C}_C$ is associated to a clutter or an unknown target, $\mathcal{L}^{j,i_C}_{\mathbf{C}_C}$ is the likelihood that $\mathbf{C}_C$ is associated to target $i_C$ and $\mathcal{L}^{j,i}_{\emptyset}$ is the likelihood that the $i$th target is not detected. Detail expressions of these three likelihoods can be found in \cite{pmbmextended2}. Let $\mathcal{W}^j_{k|k-1}$ denote the weight of the $j$th predicted global association hypothesis, then the updated weight with data association $A\in\mathcal{A}^j$ can be written as
+\begin{equation}
+\mathcal{W}^{j,A}_{k|k}\propto \mathcal{W}^{j}_{k|k-1}\mathcal{L}^{j,A}_{k|k-1},
+\end{equation}
+where the proportionality denotes that normalization is required to ensure
+\begin{equation}
+    \sum_{j\in\mathbb{J}}\sum_{A\in\mathcal{A}^j}\mathcal{W}^{j,A}_{k|k}=1.
+\end{equation}
+
+\subsection{Approximations of the data association problem}
+Due to the large number of data association hypotheses generated in the update step, the number of PMBM parameters increases rapidly as more data is observed. Since it is not tractable to compute all the possible components, efficient reduction methods need to be used to keep the number of MB components remain at a tractable level. 
+
+
+\subsubsection{Group gating}
+Given the prediction in the PMBM form, it is possible to apply the full PMBM update directly. However, it is more efficient to separate the targets and measurements into approximately independent sub-groups by exploiting the spatial distributions of targets. Gating \cite[Sec. 2.2.2.2]{gating} is used to group targets and measurements. Groups are formed based on targets which share at least one measurement. Group gating enables updates to be performed for each group in parallel.
+
+
+
+\subsubsection{Partitioning and assignment}
+In each gating group, Distant Partitioning method \cite{phdextended,phdextended2} is used to generate multiple partitions. For the gating group with only measurements, each measurement cell corresponds to a clutter source or an unknown target. For gating groups with both targets and measurements, all possible mappings of the measurement cells to unknown targets or previously detected targets are considered. 
+
+~\\
+If the weights of data association hypotheses are generated in non-decreasing order, the M-best mappings (i.e. highest weights) can be selected without computing the weights of all possible mappings exhaustively. The M-mappings with the highest weights can be found by solving the ranked assignment problem using Murty’s algorithm \cite{murty}. Implementation details, e.g., how to construct the cost function for the association map, can be found in \cite{pmbmpoint2}. Another efficient solution to the assignment problem is based on Gibbs sampling. The Gibbs sampling method has been applied in \cite{gibbsglmb} for truncating the GLMB filtering density. It is shown in \cite{gibbsglmb} that the Gibbs sampler based solution has a linear complexity in the number of measurements whereas deterministic ranked assignment solutions are cubic at best. 
+
+
+\subsubsection{Stochastic optimization}
+Instead of solving the data association problem in two separate steps, i.e., partitioning and assignment. A SO method is proposed in \cite{soextended}, which solves the problem in a single step and works directly with the likelihood. It has been proved in \cite{soextended}, the SO method outperforms previous work based on partitioning in scenario where two or more targets are spatially close. 
+
+~\\
+The algorithm is initialized by defining as assignment vector $\boldsymbol{\varphi}$ of length $|Z_k|$, indicating which sources the measurements are associated to. If entry $\varphi_m\in\mathbb{I}^j_{k|k-1}$, then the $m$th measurement is associated to a detected target with index $\varphi_m$ for the $j$th predicted global association hypothesis. Otherwise, the $m$th measurement is associated to a clutter or an unknown target. The corresponding data association $A(\boldsymbol{\varphi})$ can be obtained by forming subsets of the measurements indices having equal assignments. A target index is also included in $A(\boldsymbol{\varphi})$ if only $\varphi_m\in\mathbb{I}^j_{k|k-1}$. 
+
+~\\
+In each iteration of the sampling, a measurement index is randomly selected. The possible actions can be taken include moving the selected measurement to an existing cell or a new cell, merging the selected cell with an existing cell and splitting the selected cell into two new cells. Given an assignment at the $t$th iteration, the probability resulting from an action $a$ is given by the relative likelihood \cite{soextended}:
+\begin{equation}
+    P\{\boldsymbol{\varphi}^{(t+1)}=\boldsymbol{\varphi}^{(t)}(a)\mid\boldsymbol{\varphi}^{(t)}\} = \frac{\mathcal{L}^{(t)}_a}{\sum_{a^{\prime}}\mathcal{L}^{(t)}_{a^{\prime}}},
+    \label{eq:sampling}
+\end{equation}
+where $\mathcal{L}^{(t)}_a$ represents the product of the likelihoods of the cells that are affected by the action. Data associations with high posterior probabilities will be sampled more often. After enough number of iterations, a subset of data associations with high likelihoods can be taken from the obtained sequence of data associations. 
