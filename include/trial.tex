@@ -1,0 +1,21 @@
+The ratio between $p(\boldsymbol{\varphi}^{(t+1)})$ and $p(\boldsymbol{\varphi}^{(t)})$ can be represented as the product of the index cells that are affected by the action (cf. (\ref{eq:affectedlikelihood}))
+\begin{equation}
+    \frac{p(\boldsymbol{\varphi}^{(t+1)})}{p(\boldsymbol{\varphi}^{(t)})} = \begin{cases}
+    \mathcal{L}^{A^{(t)}_{\alpha}}_{\mathbf{C}_{merge}^{(t)}}/(\mathcal{L}^{A^{(t)}}_{\mathbf{C}_{c_1}^{(t)}}\mathcal{L}^{A^{(t)}}_{\mathbf{C}_{c_2}^{(t)}}) & \text{  if  } \mathbf{C}_{c_1}^{(t)} \text{  and  } \mathbf{C}_{c_2}^{(t)} \text{  are merged  }\\
+    \mathcal{L}^{A^{(t)}_{\alpha}}_{\mathbf{C}_{c_1}^{(t),1}}\mathcal{L}^{A^{(t)}_{\alpha}}_{\mathbf{C}_{c_1}^{(t),2}}/\mathcal{L}^{A^{(t)}}_{\mathbf{C}_{c_1}} & \text{  if  } \mathbf{C}_{c_1}^{(t)} \text{  is split into  } \mathbf{C}_{c_1}^{(t),1} \text{  and  } \mathbf{C}_{c_1}^{(t),2}
+    \end{cases}
+\end{equation}
+where $\mathbf{C}_{merge}^{(t)}$ denotes the merged cell, which can either be $\mathbf{C}_{c_1}^{(t)}$ or $\mathbf{C}_{c_2}^{(t)}$. 
+
+~\\
+Let $q(\boldsymbol{\varphi}^{(t+1)}_{split}|\boldsymbol{\varphi}^{(t)})$ denote the probability of proposing a particular split action, and $q(\boldsymbol{\varphi}^{(t+1)}_{merge}|\boldsymbol{\varphi}^{(t)})$ denote the probability of proposing a particular merge action. Note that $q(\boldsymbol{\varphi}^{(t+1)}_{split}|\boldsymbol{\varphi}^{(t)})$ is equivalent to $q(\boldsymbol{\varphi}^{(t)}|\boldsymbol{\varphi}^{(t+1)}_{merge})$, and that $q(\boldsymbol{\varphi}^{(t+1)}_{merge}|\boldsymbol{\varphi}^{(t)})$ is equivalent to $q(\boldsymbol{\varphi}^{(t)}|\boldsymbol{\varphi}^{(t+1)}_{split})$. Since there is only one way to assign measurements in two different measurement cells to the same component given a particular merge proposal, the transition probability from a split state to a merge state is always one, i.e., 
+\begin{equation}
+    q(\boldsymbol{\varphi}^{(t+1)}_{merge}|\boldsymbol{\varphi}^{(t)}) = q(\boldsymbol{\varphi}^{(t)}|\boldsymbol{\varphi}^{(t+1)}_{split}) = 1.
+    \label{eq:merge}
+\end{equation}
+The probability that $\boldsymbol{\varphi}^{(t+1)}_{split}$ is produced resulting from a split action is the product of the probabilities of assigning each measurement to a particular split index cell. This also applies for calculating the probability, $q(\boldsymbol{\varphi}^{(t)}|\boldsymbol{\varphi}^{(t+1)}_{merge})$. Assume that action $\alpha$ splits measurement cell $\mathbf{C}_{c_1}^{(t)}$ into $\mathbf{C}_{c_1}^{(t),1}$ and $\mathbf{C}_{c_1}^{(t),2}$, then the transition probability from a merge state to a split state is given by
+\begin{equation}
+    q(\boldsymbol{\varphi}^{(t+1)}_{split}|\boldsymbol{\varphi}^{(t)}) = q(\boldsymbol{\varphi}^{(t)}|\boldsymbol{\varphi}^{(t+1)}_{split}) = \frac{\prod_{z^m_k\in\mathbf{C}_{c_1}^{(t),1}}l_{c_1}(z^m_k)\prod_{z^m_k\in\mathbf{C}_{c_1}^{(t),2}}l_{c_2}(z^m_k)}{\prod_{z^m_k\in\mathbf{C}_{c_1}^{(t)}}(l_{c_1}(z^m_k)+l_{c_2}(z^m_k))},
+    \label{eq:split}
+\end{equation}
+where $l_c(z^m_k)$ denotes the likelihood of assign measurement $z^m_k$ to source $c$. Source $c_2$ can either correspond to a miss-detected target or a possible unknown target. By comparing with (\ref{eq:merge}), the probability of proposing a particular split action is smaller than the probability of proposing to merge the two resulting components. This corresponds to the fact that measurements will eventually be grouped in solving the data association problem. The proposed merge or split action is accepted according to the acceptance probability. If the proposed action is rejected, the original assignment remains as the next assignment. 

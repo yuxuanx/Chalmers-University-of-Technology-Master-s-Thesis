@@ -1,3 +1,201 @@
 % CREATED BY DAVID FRISK, 2016
-\chapter{Results}
-Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+\chapter{PMB for Extended Target Tracking}
+A PMBM conjugate prior is presented in \cite{pmbmextended,pmbmextended2} that both the prediction and update preserve the PMBM form of the density. Methods include ranked assignment and sampling methods are used to handle the data association problem. However, the number of components for a PMBM representation still grows exponentially. One potential direction to further reduce computational complexity is to approximate the MBM part in the PMBM posterior as a single MB. One such approach is to use the variational method proposed in \cite{variational} to find the best-fitting MB that minimizes the KL divergence from the MBM. 
+
+~\\
+In the implementation of the PMB filter for point target tracking \cite{variational}, the variational MB algorithm is initialized with the marginal probabilities $p_l(h)$, as can be approximated efficiently using methods such as LBP. The LBP is formulated by message passing in a bipartite model, in which all target association variables are connected to all measurement association variables \cite{lbp}. The construction of such a graphical model is based on the assumption that a target can generate at most one measurement per time. Thus, the LBP is not suitable for approximating $p_l(h)$ in extended target tracking. In this chapter, the PMB filter for extended target tracking is presented, along with its GGIW implementation.  
+
+\section{Variational MB for Extended Target}
+In this section, a review of algorithms for reduction of Gamma mixtures and inverse Wishart mixtures \cite{phdextended,gammareduction} is presented first, then the explicit expressions of (\ref{eq:mstep}) and (\ref{eq:estep}) in the EM process are given. At last, pseudo-code of a devised variational MB algorithm for extended target is presented. \cite{simplex}. 
+
+\subsection{Mixture reduction}
+Theorems describing how a sum of an arbitrary number of Gamma components or inverse Wishart component can be merged into just one Gamma or inverse Wishart component are presented in \cite{gammareduction} and \cite{phdextended} respectively. They are both performed via analytically minimization of the KL divergence
+\begin{equation}
+    \arg\min\limits_q\text{KL}(p||q) = \int p(x)\log\bigg(\frac{p(x)}{q(x)}\bigg)dx,
+\end{equation}
+which can be further rewritten as a maximization problem
+\begin{equation}
+    \arg\min\limits_q\text{KL}(p||q) = \max\limits_q\int p(x)\log q(x)dx.
+\end{equation}
+\subsubsection{Gamma mixture reduction}
+Let $p(\cdot)$ be a weighted sum of Gamma components,
+\begin{equation}
+    p(\gamma) = \sum_{i=1}^Nw_i\mathcal{GAM}(\gamma;a_i,b_i).
+\end{equation}
+Let $q(\cdot)$ be the single Gamma component that has the minimum KL divergence to $p(\cdot)$,
+\begin{equation}
+    q(\gamma) = \bar{w}\mathcal{GAM}(\gamma;a,b)
+\end{equation}
+where $\bar{w}=\sum_{i=1}^Nw_i$. Then the parameter $b$ is given by
+\begin{equation}
+    b = \frac{a}{\frac{1}{\bar{w}}\sum_{i=1}^Nw_i\frac{a_i}{b_i}},
+\end{equation}
+and the parameter $a$ is the solution to
+\begin{equation}
+    0 = \log a - \psi_0(a) +\frac{1}{\bar{w}}\sum_{i=1}^Nw_i(\psi_0(a_i)-\log b_i)-\log\bigg(\frac{1}{\bar{w}}\sum_{i=1}^Nw_i\frac{a_i}{b_i}\bigg),
+    \label{eq:gammamerge}
+\end{equation}
+where $\psi_0(\cdot)$ is the digamma function. A value for the parameter $a$ can be found by applying a numerical root finding algorithm to (\ref{eq:gammamerge}), e.g., Halley's method \cite{halley}.
+
+
+\subsubsection{Inverse Wishart mixture reduction}
+Let $p(\cdot)$ be a weighted sum of inverse Wishart components, 
+\begin{equation}
+    p(\chi) = \sum_{i=1}^Nw_i\mathcal{IW}(\chi;v_i,V_i).
+\end{equation}
+Let $q(\cdot)$ be the single inverse Wishart component that has the minimum KL divergence to $p(\cdot)$,
+\begin{equation}
+    q(\chi) = \bar{w}\mathcal{IW}(\chi;v,V).
+\end{equation}
+Then the parameter $V$ is given by
+\begin{equation}
+    V = \bar{w}(v-d-1)\bigg(\sum_{i=1}^Nw_i(v_i-d-1)V_i^{-1}\bigg)^{-1},
+\end{equation}
+and the parameter $v$ is the solution to
+\begin{multline}
+    0 = \bar{w}d\log(v-d-1)-\bar{w}\sum_{j=1}^d\psi_0\bigg(\frac{v-d-j}{2}\bigg) + \bar{w}d\log\bar{w}\\-\bar{w}\log\bigg|\sum_{i=1}^Nw_i(v_i-d-1)V_i^{-1}\bigg|+\sum_{i=1}^N\sum_{j=1}^dw_i\psi_0\bigg(\frac{v_i-d-j}{2}\bigg)-\sum_{i=1}^Nw_i\log|V_i|,
+    \label{eq:wishartmerge}
+\end{multline}
+where $d$ is the dimension of matrix $V$. A value for the parameter $v$ can be found by applying a root finding algorithm to (\ref{eq:wishartmerge}). 
+
+
+
+\subsection{EM for extended target}
+Assuming the density distributions of Bernoulli components are constrained to be GGIW, (\ref{eq:mstep}) can be replaced by expressions matching the probability of existence and the set of GGIW density parameters $\zeta = \{a,b,\mathbf{m},P,v,V\}$ to the expression in (\ref{eq:mstep}). Since the Gamma, Gaussian and inverse Wishart distributions are mutually independent, the Bernoulli-GGIW form also permits closed-form evaluation of (\ref{eq:estep}). Specifically, if
+\begin{equation}
+    f^{j,i}(X) = \begin{cases}
+        1 - r^{j,i}, & X = \emptyset\\
+        r^{j,i}\mathcal{GGIW}(\xi^{j,i};\zeta^{j,i}), & X = \{x\}
+    \end{cases}
+\end{equation}
+\begin{equation}
+    g^{l}(X) = \begin{cases}
+        1 - \hat{r}^{l}, & X = \emptyset\\
+        \hat{r}^{l}\mathcal{GGIW}(\hat{\xi}^{l};\hat{\zeta}^{l}), & X = \{x\}
+    \end{cases}
+\end{equation}
+then the M-step reduces to setting:
+\begin{subequations}
+\begin{align}
+    \hat{r}^{l} & = \sum_{j\in\mathbb{J},\pi\in\Pi_N}\mathcal{W}^jq_j(\pi)r^{j,\pi^{-1}(l)},\\
+    \hat{\mathbf{m}}^{l} & = \frac{1}{\hat{r}^{l}}\sum_{j\in\mathbb{J},\pi\in\Pi_N}\mathcal{W}^jq_j(\pi)r^{j,\pi^{-1}(l)}\mathbf{m}^{j,\pi^{-1}(l)},\\
+    \hat{P}^{l} & = \frac{1}{\hat{r}^{l}}\sum_{j\in\mathbb{J},\pi\in\Pi_N}\mathcal{W}^jq_j(\pi)r^{j,\pi^{-1}(l)}\big\{P^{j,\pi^{-1}(l)}+(\mathbf{m}^{j,\pi^{-1}(l)}-\hat{\mathbf{m}}^{l})(\mathbf{m}^{j,\pi^{-1}(l)}-\hat{\mathbf{m}}^{l})^T\big\},\\
+    \hat{a}^l & : \text{solution to (\ref{eq:gammamerge}) with  } w_j=\mathcal{W}^jq_j(\pi)r^{j,\pi^{-1}(l)},\\
+    \hat{b}^l & = \frac{\hat{a}^l}{\frac{1}{\hat{r}^{l}}\sum_{j\in\mathbb{J},\pi\in\Pi_N}\mathcal{W}^jq_j(\pi)r^{j,\pi^{-1}(l)}\frac{a^{j,\pi^{-1}(l)}}{b^{j,\pi^{-1}(l)}}},\\
+    \hat{v}^l & : \text{solution to (\ref{eq:wishartmerge}) with  } w_j=\mathcal{W}^jq_j(\pi)r^{j,\pi^{-1}(l)},\\
+    \hat{V}^l & = \hat{r}^{l}(\hat{v}^{l}-d-1)\bigg(\sum_{j\in\mathbb{J},\pi\in\Pi_N}\mathcal{W}^jq_j(\pi)r^{j,\pi^{-1}(l)}(v^{j,\pi^{-1}(l)}-d-1){V^{j,\pi^{-1}(l)}}^{-1}\bigg)^{-1},
+\end{align}
+\end{subequations}
+while the integral required in the E-step becomes:
+\begin{multline}
+    -\int f^{j,i}(X)\log g^{l}(X)\delta X = -(1-r^{j,i})\log(1-\hat{r}^l) - r^{j,i}\log\hat{r}^l \\- r^{j,i}\big\{\int\mathcal{N}(\xi^{j,i};\mathbf{m}^{j,i},P^{j,i})\log\mathcal{N}(\hat{\xi}^l;\hat{\mathbf{m}}^l,\hat{P}^l) + \int\mathcal{GAM}(\gamma^{j,i};a^{j,i},b^{j,i})\\\times\log\mathcal{GAM}(\hat{\gamma}^l;\hat{a}^l,\hat{b}^l) + \int\mathcal{IW}(\chi^{j,i};v^{j,i},V^{j,i})\log\mathcal{IW}(\hat{\chi}^l;\hat{v}^l,\hat{V}^l) \big\},
+    \label{eq:esteplp}
+\end{multline}
+where
+\begin{subequations}
+\begin{multline}
+    \int\mathcal{N}(\xi^{j,i};\mathbf{m}^{j,i},P^{j,i})\log\mathcal{N}(\hat{\xi}^l;\hat{\mathbf{m}}^l,\hat{P}^l) = -\frac{d}{2}\log(2\pi)-\frac{1}{2}\log|\hat{P}^l|\\-\frac{1}{2}\text{trace}\{(P^{j,i}+(m^{j,i}-\hat{m}^l)(m^{j,i}-\hat{m}^l)^T)(\hat{P}^l)^{-1}\},
+    \end{multline}
+    \begin{multline}
+        \int\mathcal{GAM}(\gamma^{j,i};a^{j,i},b^{j,i})\log\mathcal{GAM}(\hat{\gamma}^l;\hat{a}^l,\hat{b}^l) = \hat{a}^l\log\hat{b}^l - \log\Gamma(\hat{a}^l) \\+ (\hat{a}^l-1)(\psi_0(a^{j,i})-\log b^{j,i}) - \hat{b}^l\frac{a^{j,i}}{b^{j,i}},
+    \end{multline}
+    \begin{multline}
+        \int\mathcal{IW}(\chi^{j,i};v^{j,i},V^{j,i})\log\mathcal{IW}(\hat{\chi}^l;\hat{v}^l,\hat{V}^l) = -\frac{(\hat{v}^l-d-1)d}{2}\log2 \\+ \frac{\hat{v}^l-d-1}{2}\log|\hat{V}^l| - \log\Gamma_d\bigg(\frac{\hat{v}^l-d-1}{2}\bigg) - \frac{\hat{v}^l}{2}\bigg\{\log|V^{j,i}|-d\log2\\-\sum_{j=1}^d\psi_0\bigg(\frac{v^{j,i}-d-j}{2}\bigg)\bigg\} -\frac{1}{2}\text{trace}\{(v^{j,i}-d-1)(V^{j,i})^{-1}\hat{V}^l\}.
+    \end{multline}
+\end{subequations}
+
+\subsection{A devised polytope approximation}
+Whereas the optimization problem in (\ref{eq:vaorigin}) involves missing data $q_j(\pi)$ for every data association. A vastly simplified representation $q(h,l)$ is given in (\ref{eq:qhj}), which specifies the weight of Bernoulli component $f_h(X)$ in the new Bernoulli component $g^l(X)$. Due to the unknown number of targets detected for the first time, each MB in $f(X)$ may have different number of Bernoulli components. This suggests a devised polytope: 
+\begin{equation}
+    \mathcal{M}^* = \Bigg\{q(h,l)\geq0\Bigg|\sum_{h\in\mathcal{H}}q(h,l)=p_l ~\forall~ l\in\{1,...,N^*\},\sum^{N^*}_{l=1}q(h,l)=p_h ~\forall~ h\in\mathcal{H}\Bigg\}, 
+\end{equation}
+where $N^*$ is the number of Bernoulli components in $g(X)$, which is also the largest number of Bernoulli components that a MB has in $f(X)$. In comparison to (\ref{eq:polytope}), this new polytope also considers the Bernoulli components that correspond to the updates of unknown targets. Given MB components with high likelihoods obtained by solving the data association problem and their corresponding normalized weights, the marginal probabilities $p_l(h)$ can be approximately calculated using (\ref{eq:marginalprob}). 
+
+\subsection{Pseudo-code for GGIW-VMB}
+\begin{algorithm}[H]
+  \SetAlgoLined
+  \SetKwInOut{Input}{input}\SetKwInOut{Output}{output}
+  \Input{$\mathcal{H}, [p_l(h)], [r_h], [a_h], [b_h], [\mathbf{m}_h], [P_h], [v_h], [V_h]$}
+  \Output{$q(h,l), [\hat{r}^l], [\hat{a}_l], [\hat{b}_l], [\hat{\mathbf{m}}_l], [\hat{P}_l], [\hat{v}_l], [\hat{V}_l]$}
+  $q(h,l)\leftarrow p_l(h) ~\forall~ h\in\mathcal{H}, l\in\{1,...,N^*\}$\;
+  $p_h \leftarrow \sum_{l=1}^{N^*}q(h,l)~\forall~ h\in\mathcal{H}$\;
+  $p_l\leftarrow \sum_{h\in\mathcal{H}}q(h,l)~\forall~ l\in\{1,...,N^*\}$\;
+  \Repeat{\rm{Sufficiently small progress is made in objective of LP from one iteration to next}}{
+    $\hat{r}^l \leftarrow \sum_{h\in\mathcal{H}}q(h,l)r_h~\forall~l$\;
+    $\hat{\mathbf{m}}^l\leftarrow\frac{1}{\hat{r}^l}\sum_{h\in\mathcal{H}}q(h,l)r_h\mathbf{m}_h~\forall~l$\;
+    $\hat{P}^l\leftarrow\frac{1}{\hat{r}^l}\sum_{h\in\mathcal{H}}q(h,l)r_h(P_h+(\mathbf{m}_h - \hat{\mathbf{m}}^l)(\mathbf{m}_h - \hat{\mathbf{m}}^l)^T)~\forall~l$\;
+    $\hat{a}^l\leftarrow\text{solution to (\ref{eq:gammamerge}) with }w_h = q(h,l)r_h~\forall~h, l$\;
+    $\hat{b}^l\leftarrow\hat{a}^l\hat{r}^l/(\sum_{h\in\mathcal{H}}q(h,l)r_h\frac{a_h}{b_h})~\forall~l$\;
+    $\hat{v}^l\leftarrow\text{solution to (\ref{eq:wishartmerge}) with }w_h = q(h,l)r_h~\forall~h, l$\;
+    $\hat{V}^l\leftarrow\hat{r}^l(\hat{v}^l-d-1)(\sum_{h\in\mathcal{H}}q(h,l)r_h(v_h-d-1)V_h^{-1})^{-1}$\;
+    Calculate $C(h,l)$ using (\ref{eq:esteplp}) $\forall~h,l$\;
+    Solve the LP:
+    \begin{equation}
+        \arg\min\limits_{q(h,l)}\sum_{h\in\mathcal{H}}\sum_{l=1}^{N^*}q(h,l)
+        \label{eq:lp}
+    \end{equation}
+    \begin{subequations}
+    \begin{align*}
+        \text{subject to}&\sum_{h\in\mathcal{H}}q(h,l)=p_l~\forall~l\\
+        &\sum_{l=1}^{N^*}q(h,l) = p_h~\forall~h\\
+        &q(h,l)\geq0~\forall~h, l
+    \end{align*}
+    \end{subequations}
+    }
+  \caption{GGIW-VMB}
+\end{algorithm}
+The form of (\ref{eq:lp}) is a network flow LP, referred to as a transportation problem. The simplex algorithm \cite{simplex} is utilized in this work to solve this problem.
+
+\section{PMB Complexity Reduction}
+In the previous section, variational approximation is used to approximate the MBM component of the posterior by a single MB. In this section, the recycling method \cite{recycle} and pruning-based approximations are presented to further decrease the computational cost of the PMB filter. 
+
+\subsection{Recycling}
+In the approximated MB, the recycling method of \cite{recycle} can be applied to Bernoulli components with low existence probability. The recycled components are approximated as being Poisson and are incorporated into the PPP representing unknown targets for generating possible new targets in subsequent steps. Thus, the number of Bernoulli components is reduced while the significant information of already detected targets is maintained. In addition, recycling can help recover performance loss due to the pruning of Bernoulli components with small existence probability \cite{lbp}. The benefits of recycling in the PMBM filter and the PMB filter for point target tracking have been demonstrated in \cite{performanceevaluation}.
+
+~\\
+Suppose that a Bernoulli component $f(X)$ in the form of (\ref{eq:bernoulli}), with probability of existence $r$ and spatial distribution $f(x)$ is approximated as a PPP
+\begin{equation}
+    f(X) \approx \tilde{f}(X) = e^{-u}\prod_{x\in X}D(x),
+\end{equation}
+where $\mu = \int D(x)dx$ is the Poisson rate, and $D(x)$ is the intensity function. The distortion caused by this approximation can be measured by the KL divergence \cite[p. 513]{rfs}
+\begin{equation}
+    D(f(X)||\tilde{f}(X)) = \int f(X)\log\frac{f(X)}{\tilde{f}(X)}
+\end{equation}
+As shown in \cite[p. 579]{rfs}, it is optimal to set
+\begin{subequations}
+\begin{align}
+    D(x) &= \mu f(x),\\
+    \mu &= r.
+\end{align}
+\end{subequations}
+It was shown in \cite{recycle} that the value of the KL divergence at this optimal choice
+\begin{equation}
+    D(f(X)||\tilde{f}(X)) = r + (1-r)\log(1-r),
+\end{equation}
+is very small for existence probability $r$ less than 0.1. Denote $\mathbb{R}$ as the set of indices of Bernoulli components to be recycled. After recycling, the total PPP intensity of unknown targets can be expressed as
+\begin{equation}
+    D_{k|k}(x) = D^u_{k|k}(x) + \sum_{i\in\mathbb{R}}r^i_{k|k}f^i_{k|k}(x).
+\end{equation}
+
+\subsection{Pruning}
+For each gating group, solving the data association problem creates multiple updated MB components; these are pruned to only contain the MB components that correspond to $99.99\%$ of the likelihood \cite{pmbmextended2}. An updated MBM is obtained by considering all possible ways to combined the alternative updated MB components for the gating groups. The updated MBM is pruned by discarding MB components with weight smaller than a threshold before implementing variational approximation. For the approximated MB , the Bernoulli components with existence probability smaller than 0.1 are recycled. In the mixture representation of the PPP intensity of unknown targets, the components with weights smaller than a threshold are pruned.  
+
+
+
+\section{The GGIW-PMB Filter Implementation}
+In this section, the implementation of the GGIW-PMB filter is presented along with corresponding pseudo-code. In the GGIW-PMB filter, the GGIW-PMB density is propagated in time, using a recursion that consists of an update step and a prediction step. The prediction step preserves the GGIW-PMB form, whereas the update step results in a GGIW-PMBM density which is approximated by a GGIW-PMB at each time step. 
+
+~\\
+It is assumed that the detection probability $p^D(\cdot)$ and the survival probability $p^S(\cdot)$ are constant, that the clutter Poisson rate $\lambda$ is known, and that the spatial distribution is uniform, $c(z) = A^{-1}$, where $A$ is the area of the surveillance region. The PPP birth intensity is a GGIW mixture with known parameters, given by
+\begin{equation}
+    D^b_{k+1} = \mu^b_{k+1}\sum^{N^b_{k+1}}_{n=1}w^{b,n}_{k+1}\mathcal{GGIW}(x_{k+1};\zeta^{b,n}_{k+1}),
+\end{equation}
+and the initial PPP intensity of unknown targets with known parameters is expressed as
+\begin{equation}
+    D^u_{0} = \mu^u_{0}\sum^{N^u_{0}}_{n=1}w^{u,n}_{0}\mathcal{GGIW}(x_{0};\zeta^{u,n}_{0}).
+\end{equation}
+The updated density for the PPP of unknown targets has $N^b_{k+1}+N^u_{k+1}$ GGIW components after the prediction. The density for a target detected for the first time is multi-modal, with one mode for each GGIW component in the predicted PPP density. Mixture reduction can be used to reduce this to a uni-modal GGIW density \cite{phdextended,gammareduction}. 
+
+~\\
+For targets surviving from previous time steps, new single target hypotheses are included from missed detection, or updates of previous hypotheses using one of the measurement cells. There are two new GGIW components which are updated for a GGIW component that is not detected in both the PPP and the MBM update. The first is resulted from a missed detection with probability $1-p^D(x)$. The second is because the target generates zero detections. Since only the gamma parameters are different in these two GGIW components, gamma mixture reduction \cite{gammareduction} can be used to reduce this to a single mode GGIW density. Due to the similarity with the implementation of the GGIW-PMBM filter, detailed expressions regarding the prediction and update of undetected PPP, Bernoulli components and MB using GGIW modeling are omitted for brevity. The reader is referred to \cite{pmbmextended2} for more derivations and discussions.
+

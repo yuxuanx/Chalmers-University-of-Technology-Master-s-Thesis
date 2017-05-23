@@ -28,12 +28,15 @@ the union of the target indices and the assignment entries is denoted as
 
 
 \section{Gibbs Sampling Based Approach}
-In the Gibbs sampling based approach, only one measurement is moved in each iteration. Given the assignment $\boldsymbol{\varphi}^{(t)}$ at the $t$th iteration, $\boldsymbol{\varphi}^{(t+1)}$ can be obtained as follows. First, a measurement index $r$ is randomly selected from $\mathbb{M}_k$; it is assumed that the corresponding measurement $z^r$ belongs to the measurement cell $\mathbf{C}^{(t)}_{c_1}$. New assignments can be obtained by performing actions that involve the selected measurement. In this case, the following actions are considered:
+In the Gibbs sampling based approach, only one measurement is moved at each iteration. Given the assignment $\boldsymbol{\varphi}^{(t)}$ at the $t$th iteration, $\boldsymbol{\varphi}^{(t+1)}$ can be obtained as follows. First, a measurement index $r$ is randomly selected from $\mathbb{M}_k$; it is assumed that the corresponding measurement $z^r$ belongs to the measurement cell $\mathbf{C}^{(t)}_{c_1}$. New assignments can be obtained by performing actions that involve the selected measurement. Specifically, the following actions are considered:
+
 \begin{enumerate}
     \item No movement.
     \item If $|\mathbf{C}_{c_1}^{(t)}|>1$, move $z^r$ to either an existing cell $\mathbf{C}^{(t)}_{c_2}$, where $c_2\in\mathbb{S}^{(t)}\backslash c_1$, or a new cell $\mathbf{C}_{c^*}^{(t+1)}$, where $c^*\notin\mathbb{S}^{(t)}$. There are $|\mathbb{S}^{(t)}\backslash c_1|$ existing cell and one new cell to which the measurement can be moved, i.e., $|\mathbb{S}^{(t)}|$ possible actions. 
     \item If $|\mathbf{C}_{c_1}^{(t)}|=1$ and $c_1\notin\mathbb{I}^j_{k|k-1}$, move $z^r$ to cell $\mathbf{C}^{(t)}_{c_2}$, where $c_2\in\mathbb{S}^{(t)}\backslash c_1$. This corresponds to $|\mathbb{S}^{(t)}|-1$ possible actions. 
 \end{enumerate}
+
+~\\
 For the special case that $|\mathbf{C}_{c_1}^{(t)}|=1$ and $c_1\notin\mathbb{I}^j_{k|k-1}$, move $z^r$ to a new cell will result in an equivalent assignment as the case with no movement. Thus, this action is excluded to avoid double calculation. In total, the number of possible actions that can be taken is summarized as follows:
 $$\begin{cases}
 |\mathbb{S}^{(t)}|+1 & \text{if   } |\mathbf{C}_{c_1}^{(t)}|>1 \\
@@ -45,6 +48,7 @@ $$\begin{cases}
 The probability of moving to the next assignment can be calculated using (\ref{eq:sampling}). Let $A_{\alpha}^{(t)}$ denote the data association that follows from taking action $\alpha$. Assume that $\mathbf{C}_{c_1}$ and $\mathbf{C}_{c_2}$ are the two cells that are affected by action $\alpha$, the product of the likelihoods of cells $\mathbf{C}_{c_1}$ and $\mathbf{C}_{c_2}$ after applying action $\alpha$ can be expressed as
 \begin{equation}
     \mathcal{L}^{(t)}_{\alpha} = \frac{\mathcal{L}^{A^{(t)}_{\alpha}}_{\mathbf{C}_{c_1}}}{\mathcal{L}^{A^{(t)}}_{\mathbf{C}_{c_1}}}\cdot\frac{\mathcal{L}^{A^{(t)}_{\alpha}}_{\mathbf{C}_{c_2}}}{\mathcal{L}^{A^{(t)}}_{\mathbf{C}_{c_2}}}.
+    \label{eq:affectedlikelihood}
 \end{equation}
 Note that if cell $\mathbf{C}_{c_2}$ corresponds to a new cell, it is assumed that $\mathcal{L}^{A^{(t)}}_{\mathbf{C}_{c_2}} = 1$, and that if $c_1\notin\mathbb{I}^j_{k|k-1}$ and cell $\mathbf{C}_{c_1}$
 becomes empty after moving out the measurement, it is assumed that $\mathcal{L}^{A^{(t)}_{\alpha}}_{\mathbf{C}_{c_1}} = 1$.
@@ -53,4 +57,161 @@ becomes empty after moving out the measurement, it is assumed that $\mathcal{L}^
 Although the Gibbs sampling approach is straightforward and easy to implement, it can be slow to converge and mix poorly. When there are two or more targets with similar measurement rates and extents in proximity, the Gibbs sampling method may become trapped in a local mode that corresponds to an incorrect association of targets and measurements, which leads to poor tracking results. This is known as the incremental nature of Gibbs sampler \cite{gibbspoor}, which is hard to simultaneously move a group of observations to a new mixture component because the intermediate states have low probability. 
 
 
-\section{Merge-Split MH Based Approach}
+\section{Merge/Split MH Based Approach}
+When two or more mixture components have similar parameters, Gibbs sampling can be inefficient. To remedy this problem, a new MH algorithm was introduced in \cite{mergesplit} by splitting or merging a group of data points at each iteration. In this section, the merge/split MH algorithm is devised to solving the data association problem in multiple extended target tracking. 
+
+\subsection{MH algorithm review}
+The MH algorithm samples from a distribution with density $\pi(x)$ by drawing a candidate state $x^*$, according to a proposal density $q(x^*|x)$. This proposed state $x^*$ is evaluated by the Metropolis-Hastings acceptance probability, which is calculated as follows:
+\begin{equation}
+    a(x^*|x) = \min\bigg(1,\frac{q(x|x^*)\pi(x^*)}{q(x^*|x)\pi(x)}\bigg).
+    \label{eq:mhprob}
+\end{equation}
+The next state will always be set to $x^*$ when the acceptance $a(x^*|x)$ is equal or bigger than one, or accordingly when $a(x^*|x)$ is smaller than one. Otherwise, the new state remains the same as the current state $x$. The Gibbs sampler can be seen as a special case of the MH algorithm, in which the proposed samples are always accepted. 
+
+\subsection{A devised merge/split MH sampler}
+
+\subsubsection{Actions}
+
+In the merge/split MH based approach, a group of measurements is moved at each iteration: two measurement cells can be merged together; a measurement cell containing more than one measurement can be split into two measurement cells. Note that this merge/split MH based approach only applies to the case when there is more than one measurement. When there is only one measurement available, i.e., $|\mathbb{M}_k|=1$, this measurement can either be associated to one of the detected targets or a possible unknown target. 
+
+~\\
+Given the assignment $\boldsymbol{\varphi}^{(t)}$ at the $t$th iteration, $\boldsymbol{\varphi}^{(t+1)}$ can be obtained as follows. First, two measurement indices $r_1$ and $r_2$ are randomly sampled from $\mathbb{M}_k$. If the corresponding measurements $z^{r_1}$ and $z^{r_2}$ belong to the same measurement cell $\mathbf{C}_{c_1}^{(t)}$, cell $\mathbf{C}_{c_1}^{(t)}$ will be split into $\mathbf{C}_{c_1}^{(t),1}$ and $\mathbf{C}_{c_1}^{(t),2}$. If measurements $z^{r_1}$ and $z^{r_2}$ belong to two different measurement cells $\mathbf{C}_{c_1}^{(t)}$ and $\mathbf{C}_{c_2}^{(t)}$ respectively, $\mathbf{C}_{c_1}^{(t)}$ and $\mathbf{C}_{c_2}^{(t)}$ will be merged. Compared with the Gibbs sampling based approach, in which the possible action affects the selected measurement, the measurement cells to which the selected measurements belong are affected in the merge/split MH based approach. Specifically, the following actions are considered, where $\mathbb{U}^{j,(t)}_{k|k-1}=\{c_u^{(t)}\}$ denotes the set of miss-detected target indices at the $t$th iteration, and $\mathbf{C}_{c_*}^{(t+1)}$ with $c_*\notin\mathbb{S}^{(t)}$ denotes a new cell. 
+\begin{enumerate}
+    \item If $z^{r1}\in\mathbf{C}_{c_1}^{(t)}$, $z^{r2}\in\mathbf{C}_{c_2}^{(t)}$, $c_1\notin\mathbb{I}^j_{k|k-1}$ and $c_2\notin\mathbb{I}^j_{k|k-1}$, cell $\mathbf{C}_{c_1}^{(t)}$ and cell $\mathbf{C}_{c_2}^{(t)}$ are merged first, then select one of the two alternatives:
+    \begin{subequations}
+    \begin{align}
+        \varphi_m^{(t+1)} & = 
+        \begin{cases}
+            c_1 & \text{if  } \varphi_m^{(t)}=c_2\\
+            \varphi_m^{(t)} & \text{otherwise}
+        \end{cases}\\
+        \varphi_m^{(t+1)} & = 
+        \begin{cases}
+            c_u^{(t)} & \text{if  } \varphi_m^{(t)}=c_1 \text{  or  } \varphi_m^{(t)}=c_2\\
+            \varphi_m^{(t)} & \text{otherwise}
+        \end{cases}
+    \end{align}
+    \end{subequations}
+    \item If $z^{r1}\in\mathbf{C}_{c_1}^{(t)}$, $z^{r2}\in\mathbf{C}_{c_2}^{(t)}$, $c_1\in\mathbb{I}^j_{k|k-1}$ or $c_2\in\mathbb{I}^j_{k|k-1}$, cell $\mathbf{C}_{c_1}^{(t)}$ and cell $\mathbf{C}_{c_2}^{(t)}$ are merged first, then select one of the two alternatives: 
+    \begin{subequations}
+    \begin{align}
+        \varphi_m^{(t+1)} & = 
+        \begin{cases}
+            c_1 & \text{if  } \varphi_m^{(t)}=c_2\\
+            \varphi_m^{(t)} & \text{otherwise}
+        \end{cases}\\
+        \varphi_m^{(t+1)} & = 
+        \begin{cases}
+            c_2 & \text{if  } \varphi_m^{(t)}=c_1\\
+            \varphi_m^{(t)} & \text{otherwise}
+        \end{cases}
+    \end{align}
+    \end{subequations}
+    \item If $z^{r1}\in\mathbf{C}_{c_1}^{(t)}$, $z^{r2}\in\mathbf{C}_{c_1}^{(t)}$, and $c_1\in\mathbb{I}^j_{k|k-1}$, first split $\mathbf{C}_{c_1}^{(t)}$ into $\mathbf{C}_{c_1}^{(t),1}$ and $\mathbf{C}_{c_1}^{(t),2}$, then select one of the four alternatives: 
+    \begin{subequations}
+    \begin{align}
+        \varphi_m^{(t+1)} & = 
+        \begin{cases}
+            c_* & \text{if  } z^m_k\in\mathbf{C}^{(t),1}_{c_1}\\
+            \varphi_m^{(t)} & \text{otherwise}
+        \end{cases}\\
+        \varphi_m^{(t+1)} & = 
+        \begin{cases}
+            c_* & \text{if  } z^m_k\in\mathbf{C}^{(t),2}_{c_1}\\
+            \varphi_m^{(t)} & \text{otherwise}
+        \end{cases}\\
+        \varphi_m^{(t+1)} & = 
+        \begin{cases}
+            c_u^{(t)} & \text{if  } z^m_k\in\mathbf{C}^{(t),1}_{c_1}\\
+            \varphi_m^{(t)} & \text{otherwise}
+        \end{cases}\\
+        \varphi_m^{(t+1)} & = 
+        \begin{cases}
+            c_u^{(t)} & \text{if  } z^m_k\in\mathbf{C}^{(t),2}_{c_1}\\
+            \varphi_m^{(t)} & \text{otherwise}
+        \end{cases}
+    \end{align}
+    \end{subequations}
+    \item If $z^{r1}\in\mathbf{C}_{c_1}^{(t)}$, $z^{r2}\in\mathbf{C}_{c_1}^{(t)}$, and $c_1\notin\mathbb{I}^j_{k|k-1}$, first split $\mathbf{C}_{c_1}^{(t)}$ into $\mathbf{C}_{c_1}^{(t),1}$ and $\mathbf{C}_{c_1}^{(t),2}$, then select one of the three alternatives: 
+    \begin{subequations}
+    \begin{align}
+        \varphi_m^{(t+1)} & = 
+        \begin{cases}
+            c_* & \text{if  } z^m_k\in\mathbf{C}^{(t),1}_{c_1}\\
+            \varphi_m^{(t)} & \text{otherwise}
+        \end{cases}\\
+        \varphi_m^{(t+1)} & = 
+        \begin{cases}
+            c_u^{(t)} & \text{if  } z^m_k\in\mathbf{C}^{(t),1}_{c_1}\\
+            \varphi_m^{(t)} & \text{otherwise}
+        \end{cases}\\
+        \varphi_m^{(t+1)} & = 
+        \begin{cases}
+            c_u^{(t)} & \text{if  } z^m_k\in\mathbf{C}^{(t),2}_{c_1}\\
+            \varphi_m^{(t)} & \text{otherwise}
+        \end{cases}
+    \end{align}
+    \end{subequations}
+\end{enumerate}
+In total, the number of possible actions of the merge/split MH based approach that can be taken at the $t$th iteration is summarized as follows: 
+$$\begin{cases}
+|\mathbb{U}^{j,(t)}_{k|k-1}| + 1 & \text{if  } z^{r1}\in\mathbf{C}_{c_1}^{(t)}, z^{r2}\in\mathbf{C}_{c_2}^{(t)}, c_1\notin\mathbb{I}^j_{k|k-1} \text{  and  } c_2\notin\mathbb{I}^j_{k|k-1}\\
+2 & \text{if  } z^{r1}\in\mathbf{C}_{c_1}^{(t)}, z^{r2}\in\mathbf{C}_{c_2}^{(t)}, c_1\in\mathbb{I}^j_{k|k-1} \text{  or  } c_2\in\mathbb{I}^j_{k|k-1}\\
+2|\mathbb{U}^{j,(t)}_{k|k-1}| + 2 & \text{if  } z^{r1}\in\mathbf{C}_{c_1}^{(t)}, z^{r2}\in\mathbf{C}_{c_1}^{(t)}, \text{  and  } c_1\in\mathbb{I}^j_{k|k-1}\\
+2|\mathbb{U}^{j,(t)}_{k|k-1}| + 1 & \text{if  } z^{r1}\in\mathbf{C}_{c_1}^{(t)}, z^{r2}\in\mathbf{C}_{c_1}^{(t)}, \text{  and  } c_1\notin\mathbb{I}^j_{k|k-1}
+\end{cases}$$
+
+\subsubsection{Restricted Gibbs sampling for splitting}
+There are many ways to split a cell into two parts. The $k$-means++ algorithm \cite{kmeans++} is used in \cite{soextended}, which splits the selected cell in a deterministic way. Here, a non-deterministic method called restricted Gibbs sampling \cite{mergesplit} is introduced, which works directly with the likelihood. Assume that cell $\mathbf{C}_{c_1}^{(t)}$ is split into $\mathbf{C}_{c_1}^{(t),1}$ and $\mathbf{C}_{c_1}^{(t),2}$, the procedure for splitting $\mathbf{C}_{c_1}^{(t)}$ is given as follows:
+\begin{enumerate}
+    \item Randomly split $\mathbf{C}_{c_1}^{(t)}$ into $\mathbf{C}_{c_1}^{(t),1}$ and $\mathbf{C}_{c_1}^{(t),2}$.
+    \item If $\mathbb{U}^{j,(t)}_{k|k-1}\neq\emptyset$, then assign $\mathbf{C}_{c_1}^{(t),2}$ to one of the index cells that only consists of a single target index or a new index cell; else, if $\mathbb{U}^{j,(t)}_{k|k-1}=\emptyset$, then assign $\mathbf{C}_{c_1}^{(t),2}$ to a new index cell. 
+    \item Do restricted Gibbs scan iteratively:
+    \begin{enumerate}
+        \item Select a measurement $z_k^m$ from $\mathbf{C}_{c_1}^{(t)}$ uniformly at random.
+        \item Choose actions from
+        \begin{enumerate}
+            \item No movement
+            \item If $z_k^m\in\mathbf{C}_{c_1}^{(t),1}$, then move $z_k^m$ to $\mathbf{C}_{c_1}^{(t),2}$; else, if $z_k^m\in\mathbf{C}_{c_1}^{(t),2}$, then move $z_k^m$ to $\mathbf{C}_{c_1}^{(t),1}$.
+        \end{enumerate}
+        \item Calculate the product of the likelihoods of the cells that are affected by each action.
+        \item The action is chosen by sampling from the relative likelihoods. 
+    \end{enumerate}
+\end{enumerate}
+
+~\\
+When using the restricted Gibbs sampling method for splitting the measurement cell, the correspondence between the two new measurement cells and the two index cells is known. Hence, the number of possible split actions that can be taken at each iteration can be reduced to
+$$\begin{cases}
+|\mathbb{U}^{j,(t)}_{k|k-1}| + 1 & \text{if  } z^{r1}\in\mathbf{C}_{c_1}^{(t)}, z^{r2}\in\mathbf{C}_{c_1}^{(t)}, \text{  and  } c_1\in\mathbb{I}^j_{k|k-1}\\
+|\mathbb{U}^{j,(t)}_{k|k-1}| + 1 & \text{if  } z^{r1}\in\mathbf{C}_{c_1}^{(t)}, z^{r2}\in\mathbf{C}_{c_1}^{(t)}, \text{  and  } c_1\notin\mathbb{I}^j_{k|k-1}
+\end{cases}$$
+
+\subsubsection{Sampling probabilities}
+In the first step of the merge/split MH approach, the selection of measurement indices, $r_1$ and $r_2$, decides either the merge proposal or the split proposal will be used. Further, the range of different merge or split actions from which can be chosen depends on whether the corresponding measurements are associated to an existing target or not. At last, the particular action to be applied is decided by sampling from the relative likelihoods of different actions that can be chosen in the selected range. 
+
+~\\
+Given an assignment $\boldsymbol{\varphi}$, the probability for the next assignment resulting from action $\alpha$ is given by (cf. (\ref{eq:mhprob}))
+\begin{equation}
+    P(\boldsymbol{\varphi}^{(t+1)}=\boldsymbol{\varphi}^{(t)}(\alpha)|\boldsymbol{\varphi}^{(t)}) = \min\bigg(1,\frac{q(\boldsymbol{\varphi}^{(t)}|\boldsymbol{\varphi}^{(t+1)})\mathcal{L}^{A(\boldsymbol{\varphi}^{(t)}(\alpha))}_{k|k-1}}{q(\boldsymbol{\varphi}^{(t+1)}|\boldsymbol{\varphi}^{(t)})\mathcal{L}^{A(\boldsymbol{\varphi}^{(t)})}_{k|k-1}}\bigg),
+    \label{eq:mhacceptance}
+\end{equation}
+where $\boldsymbol{\varphi}^{(t+1)}$ can either be the vector $\boldsymbol{\varphi}^{(t+1)}_{merge}$ or $\boldsymbol{\varphi}^{(t+1)}_{split}$ depending on the type of proposal. Calculating the transition probability of a merge proposal is straightforward. The probability of proposing a particular merge action from two different measurement cells $\mathbf{C}_{c_1}^{(t)}$ and $\mathbf{C}_{c_2}^{(t)}$ is
+\begin{equation}
+    q(\boldsymbol{\varphi}^{(t+1)}_{merge}|\boldsymbol{\varphi}^{(t)}) = 1,
+\end{equation}
+because there is only one way to assign measurements in $\mathbf{C}_{c_1}^{(t)}$ and $\mathbf{C}_{c_2}^{(t)}$ to the same component according to a particular merge action. Note that $q(\boldsymbol{\varphi}^{(t+1)}_{merge}|\boldsymbol{\varphi}^{(t)})$ is equivalent to $q(\boldsymbol{\varphi}^{(t)}|\boldsymbol{\varphi}^{(t+1)}_{split})$. 
+
+~\\
+However, there is no easy way to calculate the transition probability of a split proposal $q(\boldsymbol{\varphi}^{(t+1)}_{split}|\boldsymbol{\varphi}^{(t)})$, for which all the possible splitting results need to be considered. This also applies for calculating $q(\boldsymbol{\varphi}^{(t)}|\boldsymbol{\varphi}^{(t+1)}_{merge})$. One tractable solution is to assume that the proposal probability from a merge state to a split state is always $1$, which means that the clustering result is assumed to be deterministic. Given this assumption, a simplified expression of (\ref{eq:mhacceptance}) can be written as
+\begin{equation}
+    P(\boldsymbol{\varphi}^{(t+1)}=\boldsymbol{\varphi}^{(t)}(\alpha)|\boldsymbol{\varphi}^{(t)}) = \min(1,\mathcal{L}^{(t)}_{\alpha}),
+\end{equation}
+where $\mathcal{L}^{(t)}_{\alpha}$ is given by (\ref{eq:affectedlikelihood}). 
+
+~\\
+If the acceptance probability is larger than one, the proposed merge or split action is accepted. Otherwise, it is accepted with probability equal to the ratio. If the proposed action is rejected, the original assignment remains as the next assignment. 
+
+
+
+\subsection{Combined MH and Gibbs sampling updates}
+The merge/split MH approach addresses the problem of making major changes in data association by moving a group of measurement in each iteration. However, one potential drawback is that it may take longer to move a single measurement index between index cells, especially when targets are in close proximity. In this situation, further convergence can be obtained by combining the merge/split MH approach with the Gibbs sampling. By doing this, the non-incremental changes from the merge/split MH step and the incremental change from the Gibbs sampling step can both be exploited \cite{mergesplit}. 
