@@ -1,6 +1,6 @@
 % CREATED BY DAVID FRISK, 2016
 \chapter{A Study of Sampling Based Methods}
-In previous work \cite{pmbmextended,pmbmextended2}, deterministic clustering and ranked assignment algorithms are applied to truncate the PMBM filtering density to keep the number of PMBM parameters at a tractable level. Though these approaches have been demonstrated to be able to generate good tracking results, a few drawbacks can be summarized as follows:
+In the previous work \cite{pmbmextended,pmbmextended2}, deterministic clustering and ranked assignment algorithms are applied to truncate the PMBM filtering density to keep the number of PMBM parameters at a tractable level. Though these approaches have been demonstrated to be able to generate good tracking results, a few drawbacks can be summarized as follows:
 \begin{itemize}
     \item Some prior knowledge about the tracking scenario is needed in choosing the parameters used in clustering. 
     \item Usually the target shape and measurement rate information is not taken into account when clustering. 
@@ -8,7 +8,7 @@ In previous work \cite{pmbmextended,pmbmextended2}, deterministic clustering and
 \end{itemize}
 
 ~\\
-In sampling based approach, data associations with high weights are found by sampling from possible actions that change the association: the higher the multi-target likelihood after performing the action, the higher the probability of selecting the action. In comparison to approaches based on partitioning and assignment, sampling based approach has only one parameter, i.e., the number of iterations, to be tuned and works directly with likelihood. Compared with an MCMC inference problem, samples are not directly used to approximate the multi-target filtering density. Thus, it is not necessary to discard samples in the burn-in period and wait samples from stationary distribution. In sampling based approaches to solving the data association problem, each distinct sample corresponds to a different assignment, and the higher the likelihoods, the larger probability the corresponding data association is used in approximation. 
+In the sampling based approach, data associations with high weights are found by sampling from possible actions that change the association: the higher the multi-target likelihood after performing the action, the higher the probability of selecting the action. In comparison to approaches based on partitioning and assignment, sampling based approach has only one parameter, i.e., the number of iterations, to be tuned and works directly with likelihood. Compared with an MCMC inference problem, samples are not directly used to approximate the multi-target filtering density. Thus, it is not necessary to discard samples in the burn-in period and wait samples from stationary distribution. In the sampling based approaches to solving the data association problem, each distinct sample corresponds to a different assignment, and the higher the likelihoods, the larger probability the corresponding data association is used in approximation. 
 
 ~\\
 Sampling based algorithms can be initialized with any valid assignment, e.g., starting with all the target and measurement indices in individual cells, or starting with all the target indices in individual cells and all the measurement indices in a single cell. A good choice suggested in \cite{soextended} is by making use of the predicted PMBM parameters, which allows algorithms to run in fewer iterations to find data associations with high likelihood. In this maximum likelihood based initialization, if the maximum PPP likelihood of a measurement corresponds to a target, then the measurement index and the target index belong to the same index cell. Otherwise the measurement index forms a cell only consisting of itself, with the corresponding measurement associated to an unknown target or a clutter.
@@ -32,7 +32,7 @@ In the Gibbs sampling based approach, only one measurement is moved at each iter
 
 \begin{enumerate}
     \item No movement.
-    \item If $|\mathbf{C}_{c_1}^{(t)}|>1$, move $z^r$ to either an existing cell $\mathbf{C}^{(t)}_{c_2}$, where $c_2\in\mathbb{S}^{(t)}\backslash c_1$, or a new cell $\mathbf{C}_{c^*}^{(t+1)}$, where $c^*\notin\mathbb{S}^{(t)}$. There are $|\mathbb{S}^{(t)}\backslash c_1|$ existing cell and one new cell to which the measurement can be moved, i.e., $|\mathbb{S}^{(t)}|$ possible actions. 
+    \item If $|\mathbf{C}_{c_1}^{(t)}|>1$, or $|\mathbf{C}_{c_1}^{(t)}|=1, c_1\in\mathbb{I}^j_{k|k-1}$, move $z^r$ to either an existing cell $\mathbf{C}^{(t)}_{c_2}$, where $c_2\in\mathbb{S}^{(t)}\backslash c_1$, or a new cell $\mathbf{C}_{c^*}^{(t+1)}$, where $c^*\notin\mathbb{S}^{(t)}$. There are $|\mathbb{S}^{(t)}\backslash c_1|$ existing cell and one new cell to which the measurement can be moved, i.e., $|\mathbb{S}^{(t)}|$ possible actions. 
     \item If $|\mathbf{C}_{c_1}^{(t)}|=1$ and $c_1\notin\mathbb{I}^j_{k|k-1}$, move $z^r$ to cell $\mathbf{C}^{(t)}_{c_2}$, where $c_2\in\mathbb{S}^{(t)}\backslash c_1$. This corresponds to $|\mathbb{S}^{(t)}|-1$ possible actions. 
 \end{enumerate}
 
@@ -45,12 +45,7 @@ $$\begin{cases}
 \end{cases}$$
 
 ~\\
-The probability of moving to the next assignment can be calculated using (\ref{eq:sampling}). Let $A_{\alpha}^{(t)}$ denote the data association that follows from taking action $\alpha$. Assume that $\mathbf{C}_{c_1}$ and $\mathbf{C}_{c_2}$ are the two cells that are affected by action $\alpha$, the product of the likelihoods of cells $\mathbf{C}_{c_1}$ and $\mathbf{C}_{c_2}$ after applying action $\alpha$ can be expressed as
-\begin{equation}
-    \mathcal{L}^{(t)}_{\alpha} = \frac{\mathcal{L}^{A^{(t)}_{\alpha}}_{\mathbf{C}_{c_1}}}{\mathcal{L}^{A^{(t)}}_{\mathbf{C}_{c_1}}}\cdot\frac{\mathcal{L}^{A^{(t)}_{\alpha}}_{\mathbf{C}_{c_2}}}{\mathcal{L}^{A^{(t)}}_{\mathbf{C}_{c_2}}}.
-    \label{eq:affectedlikelihood}
-\end{equation}
-Note that if cell $\mathbf{C}_{c_2}$ corresponds to a new cell, it is assumed that $\mathcal{L}^{A^{(t)}}_{\mathbf{C}_{c_2}} = 1$, and that if $c_1\notin\mathbb{I}^j_{k|k-1}$ and cell $\mathbf{C}_{c_1}$
+The probability of moving to the next assignment can be calculated using (\ref{eq:sampling}). Note that if cell $\mathbf{C}_{c_2}$ corresponds to a new cell, it is assumed that $\mathcal{L}^{A^{(t)}}_{\mathbf{C}_{c_2}} = 1$, and that if $c_1\notin\mathbb{I}^j_{k|k-1}$ and cell $\mathbf{C}_{c_1}$
 becomes empty after moving out the measurement, it is assumed that $\mathcal{L}^{A^{(t)}_{\alpha}}_{\mathbf{C}_{c_1}} = 1$.
 
 ~\\
@@ -72,7 +67,7 @@ The next state will always be set to $x^*$ when the acceptance $a(x^*|x)$ is equ
 
 \subsubsection{Actions}
 
-In the merge/split MH based approach, a group of measurements is moved at each iteration: two measurement cells can be merged together; a measurement cell containing more than one measurement can be split into two measurement cells. Note that this merge/split MH based approach only applies to the case when there is more than one measurement. When there is only one measurement available, i.e., $|\mathbb{M}_k|=1$, this measurement can either be associated to one of the detected targets or a possible unknown target. 
+In the merge/split MH based approach, a group of measurements is moved at each iteration: two measurement cells can be merged together; a measurement cell containing more than one measurement can be split into two measurement cells. Note that this merge/split MH based approach only applies to the case when there is more than one measurement. When there is only one measurement available, i.e., $|\mathbb{M}_k|=1$, this measurement can either be associated to one of the existing targets or a possible unknown target. 
 
 ~\\
 Given the assignment $\boldsymbol{\varphi}^{(t)}$ at the $t$th iteration, $\boldsymbol{\varphi}^{(t+1)}$ can be obtained as follows. First, two measurement indices $r_1$ and $r_2$ are randomly sampled from $\mathbb{M}_k$. If the corresponding measurements $z^{r_1}$ and $z^{r_2}$ belong to the same measurement cell $\mathbf{C}_{c_1}^{(t)}$, cell $\mathbf{C}_{c_1}^{(t)}$ will be split into $\mathbf{C}_{c_1}^{(t),1}$ and $\mathbf{C}_{c_1}^{(t),2}$. If measurements $z^{r_1}$ and $z^{r_2}$ belong to two different measurement cells $\mathbf{C}_{c_1}^{(t)}$ and $\mathbf{C}_{c_2}^{(t)}$ respectively, $\mathbf{C}_{c_1}^{(t)}$ and $\mathbf{C}_{c_2}^{(t)}$ will be merged. Compared with the Gibbs sampling based approach, in which the possible action affects the selected measurement, the measurement cells to which the selected measurements belong are affected in the merge/split MH based approach. Specifically, the following actions are considered, where $\mathbb{U}^{j,(t)}_{k|k-1}=\{c_u^{(t)}\}$ denotes the set of miss-detected target indices at the $t$th iteration, and $\mathbf{C}_{c_*}^{(t+1)}$ with $c_*\notin\mathbb{S}^{(t)}$ denotes a new cell. 

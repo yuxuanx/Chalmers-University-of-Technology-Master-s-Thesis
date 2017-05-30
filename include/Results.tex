@@ -1,9 +1,9 @@
 % CREATED BY DAVID FRISK, 2016
 \chapter{PMB for Extended Target Tracking}
-A PMBM conjugate prior is presented in \cite{pmbmextended,pmbmextended2} that both the prediction and update preserve the PMBM form of the density. Methods include ranked assignment and sampling methods are used to handle the data association problem. However, the number of components for a PMBM representation still grows exponentially. One potential direction to further reduce computational complexity is to approximate the MBM part in the PMBM posterior as a single MB. One such approach is to use the variational method proposed in \cite{variational} to find the best-fitting MB that minimizes the KL divergence from the MBM. 
+A PMBM conjugate prior is presented in \cite{pmbmextended,pmbmextended2} that both the prediction and update preserve the PMBM form of the density. The sampling based approaches can be used to handle the data association problem effectively. However, the number of components for a PMBM representation still grows exponentially. One potential direction to further reduce computational complexity is to approximate the MBM part in the PMBM posterior as a single MB. One such approach is to use the variational method proposed in \cite{variational} to find the best-fitting MB that minimizes the KL divergence. 
 
 ~\\
-In the implementation of the PMB filter for point target tracking \cite{variational}, the variational MB algorithm is initialized with the marginal probabilities $p_l(h)$, as can be approximated efficiently using methods such as LBP. The LBP is formulated by message passing in a bipartite model, in which all target association variables are connected to all measurement association variables \cite{lbp}. The construction of such a graphical model is based on the assumption that a target can generate at most one measurement per time. Thus, the LBP is not suitable for approximating $p_l(h)$ in extended target tracking. In this chapter, the PMB filter for extended target tracking is presented, along with its GGIW implementation.  
+In the implementation of the PMB filter for point target tracking \cite{variational}, the variational MB algorithm is initialized with the marginal probabilities $p_i(h)$, as can be approximated efficiently using methods such as LBP. The LBP is formulated by message passing in a bipartite model, in which all target association variables are connected to all measurement association variables \cite{lbp}. The construction of such a graphical model is based on the assumption that a target can generate at most one measurement per time. Thus, it is challenging to design a tractable version of the LBP for approximating the marginal probabilities in extended target tracking. In this chapter, the PMB filter for extended target tracking is presented, along with its GGIW implementation.  
 
 \section{Variational MB for Extended Target}
 In this section, a review of algorithms for reduction of Gamma mixtures and inverse Wishart mixtures \cite{phdextended,gammareduction} is presented first, then the explicit expressions of (\ref{eq:mstep}) and (\ref{eq:estep}) in the EM process are given. At last, pseudo-code of a devised variational MB algorithm for extended target is presented. \cite{simplex}. 
@@ -60,8 +60,8 @@ where $d$ is the dimension of matrix $V$. A value for the parameter $v$ can be f
 
 
 
-\subsection{EM for extended target}
-Assuming the density distributions of Bernoulli components are constrained to be GGIW, (\ref{eq:mstep}) can be replaced by expressions matching the probability of existence and the set of GGIW density parameters $\zeta = \{a,b,\mathbf{m},P,v,V\}$ to the expression in (\ref{eq:mstep}). Since the Gamma, Gaussian and inverse Wishart distributions are mutually independent, the Bernoulli-GGIW form also permits closed-form evaluation of (\ref{eq:estep}). Specifically, if
+\subsection{EM process for GGIW density}
+Assuming the density distributions of Bernoulli components are constrained to be GGIW, (\ref{eq:mstep}) can be replaced by expressions matching the probability of existence and the set of GGIW density parameters $\zeta = \{a,b,\mathbf{m},P,v,V\}$ to the expression in (\ref{eq:mstep}). Since the Gamma, Gaussian and inverse Wishart distributions are mutually independent, the Bernoulli-GGIW form permits closed-form evaluation of (\ref{eq:estep}). Specifically, if
 \begin{equation}
     f^{j,i}(X) = \begin{cases}
         1 - r^{j,i}, & X = \emptyset\\
@@ -88,31 +88,33 @@ then the M-step reduces to setting:
 \end{subequations}
 while the integral required in the E-step becomes:
 \begin{multline}
-    -\int f^{j,i}(X)\log g^{l}(X)\delta X = -(1-r^{j,i})\log(1-\hat{r}^l) - r^{j,i}\log\hat{r}^l \\- r^{j,i}\big\{\int\mathcal{N}(\xi^{j,i};\mathbf{m}^{j,i},P^{j,i})\log\mathcal{N}(\hat{\xi}^l;\hat{\mathbf{m}}^l,\hat{P}^l) + \int\mathcal{GAM}(\gamma^{j,i};a^{j,i},b^{j,i})\\\times\log\mathcal{GAM}(\hat{\gamma}^l;\hat{a}^l,\hat{b}^l) + \int\mathcal{IW}(\chi^{j,i};v^{j,i},V^{j,i})\log\mathcal{IW}(\hat{\chi}^l;\hat{v}^l,\hat{V}^l) \big\},
+    -\int f^{j,i}(X)\log g^{l}(X)\delta X = -(1-r^{j,i})\log(1-\hat{r}^l) - r^{j,i}\log\hat{r}^l \\- r^{j,i}\bigg(\int\mathcal{N}(\xi^{j,i};\mathbf{m}^{j,i},P^{j,i})\log\mathcal{N}(\hat{\xi}^l;\hat{\mathbf{m}}^l,\hat{P}^l) + \int\mathcal{GAM}(\gamma^{j,i};a^{j,i},b^{j,i})\\\times\log\mathcal{GAM}(\hat{\gamma}^l;\hat{a}^l,\hat{b}^l) + \int\mathcal{IW}(\chi^{j,i};v^{j,i},V^{j,i})\log\mathcal{IW}(\hat{\chi}^l;\hat{v}^l,\hat{V}^l) \bigg),
     \label{eq:esteplp}
 \end{multline}
 where
 \begin{subequations}
 \begin{multline}
-    \int\mathcal{N}(\xi^{j,i};\mathbf{m}^{j,i},P^{j,i})\log\mathcal{N}(\hat{\xi}^l;\hat{\mathbf{m}}^l,\hat{P}^l) = -\frac{d}{2}\log(2\pi)-\frac{1}{2}\log|\hat{P}^l|\\-\frac{1}{2}\text{trace}\{(P^{j,i}+(m^{j,i}-\hat{m}^l)(m^{j,i}-\hat{m}^l)^T)(\hat{P}^l)^{-1}\},
+    \int\mathcal{N}(\xi^{j,i};\mathbf{m}^{j,i},P^{j,i})\log\mathcal{N}(\hat{\xi}^l;\hat{\mathbf{m}}^l,\hat{P}^l) = -\frac{d}{2}\log(2\pi)-\frac{1}{2}\log|\hat{P}^l|\\-\frac{1}{2}\text{trace}\bigg(\big(P^{j,i}+(m^{j,i}-\hat{m}^l)(m^{j,i}-\hat{m}^l)^T\big)\big(\hat{P}^l\big)^{-1}\bigg),
     \end{multline}
     \begin{multline}
         \int\mathcal{GAM}(\gamma^{j,i};a^{j,i},b^{j,i})\log\mathcal{GAM}(\hat{\gamma}^l;\hat{a}^l,\hat{b}^l) = \hat{a}^l\log\hat{b}^l - \log\Gamma(\hat{a}^l) \\+ (\hat{a}^l-1)(\psi_0(a^{j,i})-\log b^{j,i}) - \hat{b}^l\frac{a^{j,i}}{b^{j,i}},
     \end{multline}
     \begin{multline}
-        \int\mathcal{IW}(\chi^{j,i};v^{j,i},V^{j,i})\log\mathcal{IW}(\hat{\chi}^l;\hat{v}^l,\hat{V}^l) = -\frac{(\hat{v}^l-d-1)d}{2}\log2 \\+ \frac{\hat{v}^l-d-1}{2}\log|\hat{V}^l| - \log\Gamma_d\bigg(\frac{\hat{v}^l-d-1}{2}\bigg) - \frac{\hat{v}^l}{2}\bigg\{\log|V^{j,i}|-d\log2\\-\sum_{j=1}^d\psi_0\bigg(\frac{v^{j,i}-d-j}{2}\bigg)\bigg\} -\frac{1}{2}\text{trace}\{(v^{j,i}-d-1)(V^{j,i})^{-1}\hat{V}^l\}.
+        \int\mathcal{IW}(\chi^{j,i};v^{j,i},V^{j,i})\log\mathcal{IW}(\hat{\chi}^l;\hat{v}^l,\hat{V}^l) = -\frac{(\hat{v}^l-d-1)d}{2}\log2 \\+ \frac{\hat{v}^l-d-1}{2}\log|\hat{V}^l| - \log\Gamma_d\bigg(\frac{\hat{v}^l-d-1}{2}\bigg) - \frac{\hat{v}^l}{2}\bigg(\log|V^{j,i}|-d\log2\\-\sum_{j=1}^d\psi_0\bigg(\frac{v^{j,i}-d-j}{2}\bigg)\bigg) -\frac{1}{2}\text{trace}\big((v^{j,i}-d-1)(V^{j,i})^{-1}\hat{V}^l\big).
     \end{multline}
 \end{subequations}
 
-\subsection{A devised polytope approximation}
-Whereas the optimization problem in (\ref{eq:vaorigin}) involves missing data $q_j(\pi)$ for every data association. A vastly simplified representation $q(h,l)$ is given in (\ref{eq:qhj}), which specifies the weight of Bernoulli component $f_h(X)$ in the new Bernoulli component $g^l(X)$. Due to the unknown number of targets detected for the first time, each MB in $f(X)$ may have different number of Bernoulli components. This suggests a devised polytope: 
-\begin{equation}
-    \mathcal{M}^* = \Bigg\{q(h,l)\geq0\Bigg|\sum_{h\in\mathcal{H}}q(h,l)=p_l ~\forall~ l\in\{1,...,N^*\},\sum^{N^*}_{l=1}q(h,l)=p_h ~\forall~ h\in\mathcal{H}\Bigg\}, 
-\end{equation}
-where $N^*$ is the number of Bernoulli components in $g(X)$, which is also the largest number of Bernoulli components that a MB has in $f(X)$. In comparison to (\ref{eq:polytope}), this new polytope also considers the Bernoulli components that correspond to the updates of unknown targets. Given MB components with high likelihoods obtained by solving the data association problem and their corresponding normalized weights, the marginal probabilities $p_l(h)$ can be approximately calculated using (\ref{eq:marginalprob}). 
+\subsection{Approximation of feasible set}
+Whereas the optimization problem in (\ref{eq:vaorigin}) involves missing data $q_j(\pi)$ for every data association, a vastly simplified representation $q(h,l)$ is given in (\ref{eq:qhj}) which specifies the weight of single target hypothesis $h\in\mathcal{H}$ in the new Bernoulli component $g^l(X)$. For an extended target that has already been detected, the single target hypotheses include events that the target is updated by a measurement cell, and that the target is miss-detected (i.e., the corresponding measurement cell is empty). 
+
+% Due to the unknown number of targets detected for the first time, each MB in $f(X)$ may have different number of Bernoulli components. This suggests a devised polytope: 
+% \begin{equation}
+%     \mathcal{M}^* = \Bigg\{q(h,l)\geq0\Bigg|\sum_{h\in\mathcal{H}}q(h,l)=p_l ~\forall~ l\in\{1,...,N^*\},\sum^{N^*}_{l=1}q(h,l)=p_h ~\forall~ h\in\mathcal{H}\Bigg\}, 
+% \end{equation}
+% where $N^*$ is the number of Bernoulli components in $g(X)$, which is also the largest number of Bernoulli components that a MB has in $f(X)$. In comparison to (\ref{eq:polytope}), this new polytope also considers the Bernoulli components that correspond to the updates of unknown targets. Given MB components with high likelihoods obtained by solving the data association problem and their corresponding normalized weights, the marginal probabilities $p_l(h)$ can be approximately calculated using (\ref{eq:marginalprob}). 
 
 \subsection{Pseudo-code for GGIW-VMB}
-\begin{algorithm}[H]
+\begin{algorithm}[h!]
   \SetAlgoLined
   \SetKwInOut{Input}{input}\SetKwInOut{Output}{output}
   \Input{$\mathcal{H}, [p_l(h)], [r_h], [a_h], [b_h], [\mathbf{m}_h], [P_h], [v_h], [V_h]$}
@@ -144,7 +146,7 @@ where $N^*$ is the number of Bernoulli components in $g(X)$, which is also the l
     }
   \caption{GGIW-VMB}
 \end{algorithm}
-The form of (\ref{eq:lp}) is a network flow LP, referred to as a transportation problem. The simplex algorithm \cite{simplex} is utilized in this work to solve this problem.
+The form of (\ref{eq:lp}) is a network flow LP, referred to as a transportation problem. In this work, the simplex algorithm \cite{simplex} is utilized to solve this problem.
 
 \section{PMB Complexity Reduction}
 In the previous section, variational approximation is used to approximate the MBM component of the posterior by a single MB. In this section, the recycling method \cite{recycle} and pruning-based approximations are presented to further decrease the computational cost of the PMB filter. 
@@ -183,19 +185,56 @@ For each gating group, solving the data association problem creates multiple upd
 
 
 \section{The GGIW-PMB Filter Implementation}
-In this section, the implementation of the GGIW-PMB filter is presented along with corresponding pseudo-code. In the GGIW-PMB filter, the GGIW-PMB density is propagated in time, using a recursion that consists of an update step and a prediction step. The prediction step preserves the GGIW-PMB form, whereas the update step results in a GGIW-PMBM density which is approximated by a GGIW-PMB at each time step. 
+In this section, the implementation of the GGIW-PMB filter is presented briefly. In the GGIW-PMB filter, the GGIW-PMB density is propagated in time, using a recursion that consists of an update step and a prediction step. The prediction step preserves the GGIW-PMB form, whereas the update step results in a GGIW-PMBM density which is approximated by a GGIW-PMB at each time step. 
 
 ~\\
 It is assumed that the detection probability $p^D(\cdot)$ and the survival probability $p^S(\cdot)$ are constant, that the clutter Poisson rate $\lambda$ is known, and that the spatial distribution is uniform, $c(z) = A^{-1}$, where $A$ is the area of the surveillance region. The PPP birth intensity is a GGIW mixture with known parameters, given by
 \begin{equation}
-    D^b_{k+1} = \mu^b_{k+1}\sum^{N^b_{k+1}}_{n=1}w^{b,n}_{k+1}\mathcal{GGIW}(x_{k+1};\zeta^{b,n}_{k+1}),
+    D^b_{k+1}(x) = \mu^b_{k+1}\sum^{N^b_{k+1}}_{n=1}w^{b,n}_{k+1}\mathcal{GGIW}(x_{k+1};\zeta^{b,n}_{k+1}),
 \end{equation}
 and the initial PPP intensity of unknown targets with known parameters is expressed as
 \begin{equation}
-    D^u_{0} = \mu^u_{0}\sum^{N^u_{0}}_{n=1}w^{u,n}_{0}\mathcal{GGIW}(x_{0};\zeta^{u,n}_{0}).
+    D^u_{0}(x) = \mu^u_{0}\sum^{N^u_{0}}_{n=1}w^{u,n}_{0}\mathcal{GGIW}(x_{0};\zeta^{u,n}_{0}).
 \end{equation}
-The updated density for the PPP of unknown targets has $N^b_{k+1}+N^u_{k+1}$ GGIW components after the prediction. The density for a target detected for the first time is multi-modal, with one mode for each GGIW component in the predicted PPP density. Mixture reduction can be used to reduce this to a uni-modal GGIW density \cite{phdextended,gammareduction}. 
+The updated density for the PPP of unknown targets has $N^b_{k+1}+N^u_{k+1}$ GGIW components after the prediction. The details of the resulting algorithm are shown in Algorithm \ref{pmbalgorithm}.
+
+
+\begin{algorithm}[h!]
+  \SetAlgoLined
+  Initialize PPP intensity of unknown targets: $D^u_0(x) = D^b(x)$\;
+  Initialize empty MB: $\mathbb{I}_0 = \emptyset$\;
+  \For{$k = 1:\#\rm{total~time~step}$}{
+  \textbf{Prediction:}\
+  \begin{itemize}
+      \item Predict existing PPP intensity, see \cite[Table V]{pmbmextended2}
+      \item Incorporate birth intenisty into PPP
+      \item Predict MB, see \cite[Table V]{pmbmextended2}
+  \end{itemize}
+  \textbf{Update:}\\
+  Group gating:\\
+  For measurements do not fall into any of the gate:
+  \begin{itemize}
+      \item Clustering (e.g., distant partitioning, sampling based approach)
+      \item Do PPP update for each cluster, see \cite[Table VIII]{pmbmextended2}
+  \end{itemize}
+  \For{\rm{each gating group}}{
+    Solving the data association problem\;
+    \For{\rm{each MB}}{
+        Update Bernoulli components that correspond to detected targets and missed detections, see \cite[Table VII, IX]{pmbmextended2}\;
+        Create new Bernoulli components for targets detected for the first time, see \cite[Table VIII]{pmbmextended2}\;
+    }
+  }
+  Combine the updated MB components for all the gating groups\;
+  Prune low weight MB components\;
+  Merge the MBM into a single MB via variational approximation\;
+  Combine the approximated MB with the MB resulted from PPP update of measurements outside the gate\;
+  Recycle Bernoulli components with low existence probability\;
+  Reduce the GGIW mixture of the Poisson intensity if necessary by pruning\;
+  }
+  \caption{GGIW-PMB filter}
+  \label{pmbalgorithm}
+\end{algorithm}
 
 ~\\
-For targets surviving from previous time steps, new single target hypotheses are included from missed detection, or updates of previous hypotheses using one of the measurement cells. There are two new GGIW components which are updated for a GGIW component that is not detected in both the PPP and the MBM update. The first is resulted from a missed detection with probability $1-p^D(x)$. The second is because the target generates zero detections. Since only the gamma parameters are different in these two GGIW components, gamma mixture reduction \cite{gammareduction} can be used to reduce this to a single mode GGIW density. Due to the similarity with the implementation of the GGIW-PMBM filter, detailed expressions regarding the prediction and update of undetected PPP, Bernoulli components and MB using GGIW modeling are omitted for brevity. The reader is referred to \cite{pmbmextended2} for more derivations and discussions.
+The density for a target detected for the first time is multi-modal, with one mode for each GGIW component in the predicted PPP density. Mixture reduction can be used to reduce this to a uni-modal GGIW density \cite{phdextended,gammareduction}. For targets surviving from previous time steps, new single target hypotheses are included from missed detection, or updates of previous hypotheses using one of the measurement cells. There are two new GGIW components which are updated for a GGIW component that is not detected in both the PPP and the MBM update. The first is resulted from a missed detection with probability $1-p^D(x)$. The second is because the target generates zero detections. Since only the gamma parameters are different in these two GGIW components, gamma mixture reduction \cite{gammareduction} can be used to reduce this to a single mode GGIW density. Due to the similarity with the implementation of the GGIW-PMBM filter, expressions regarding the prediction and update of undetected PPP, Bernoulli components and MB using GGIW modeling are omitted for brevity, details can be found in \cite{pmbmextended2}. 
 
